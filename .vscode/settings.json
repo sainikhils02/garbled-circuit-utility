@@ -1,5 +1,11 @@
 {
     "files.associations": {
-        "xtr1common": "cpp"
+        "xtr1common": "cpp",
+        "vector": "cpp",
+        "iterator": "cpp",
+        "memory": "cpp",
+        "random": "cpp",
+        "ranges": "cpp",
+        "xutility": "cpp"
     }
 }
