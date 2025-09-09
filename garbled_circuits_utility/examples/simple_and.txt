@@ -1,0 +1,10 @@
+# Simple AND gate circuit
+# Input: 2 bits (wire 1, wire 2)  
+# Output: 1 bit (wire 3)
+# Function: wire3 = wire1 AND wire2
+
+INPUTS 2
+OUTPUTS 1
+GATES 1
+
+GATE 3 1 2 AND

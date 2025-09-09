@@ -1,0 +1,11 @@
+# Simplified millionaires problem (2-bit comparison)
+# Input: 4 bits (A1,A0,B1,B0) where A=A1A0, B=B1B0
+# Output: 1 bit (1 if A >= B, 0 otherwise)
+# This is a simplified version that only compares the MSB
+
+INPUTS 4
+OUTPUTS 1
+GATES 2
+
+GATE 5 2 NOT
+GATE 6 1 5 OR

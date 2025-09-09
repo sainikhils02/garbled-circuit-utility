@@ -1,0 +1,127 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Compiled binaries
+*.exe
+*.out
+*.app
+garbler
+evaluator
+simple_and
+millionaires
+
+# Object files
+*.o
+*.obj
+*.lo
+*.slo
+
+# Libraries
+*.lib
+*.a
+*.la
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# IDE files
+.vscode/
+.idea/
+*.vcxproj*
+*.sln
+*.suo
+*.user
+
+# Temporary files
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Generated circuit files
+*.txt
+!examples/*.txt
+
+# Log files
+*.log
+
+# Core dumps
+core
+core.*
+
+# libOTe (if cloned as submodule)
+libOTe/
+
+# Dependencies
+thirdparty/
+third_party/
+deps/
+
+# Package managers
+vcpkg/
+conan/
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Test outputs
+test_results/
+coverage/
+
+# Documentation builds
+docs/build/
+docs/_build/
+
+# Python bytecode (if using Python build scripts)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Local configuration
+.env
+.env.local
+local_config.h
+
+# Profiler output
+*.prof
+gmon.out
+callgrind.out.*
+
+# Valgrind output
+valgrind-*.log
+
+# Address sanitizer output
+*.asan
+
+# Generated protocol buffers or other generated code
+*_pb2.py
+*_pb2_grpc.py
+*.pb.cc
+*.pb.h
+
+# OS specific
+.fuse_hidden*
+.nfs*

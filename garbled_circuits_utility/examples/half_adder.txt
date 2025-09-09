@@ -1,0 +1,12 @@
+# Half adder circuit
+# Input: 2 bits (A=wire1, B=wire2)
+# Output: 2 bits (Sum=wire3, Carry=wire4)
+# Sum = A XOR B
+# Carry = A AND B
+
+INPUTS 2
+OUTPUTS 2
+GATES 2
+
+GATE 3 1 2 XOR
+GATE 4 1 2 AND
