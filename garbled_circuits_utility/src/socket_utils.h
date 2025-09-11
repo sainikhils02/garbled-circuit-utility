@@ -187,9 +187,10 @@ public:
     
     // Check if connection is still alive
     bool is_connected() const;
+    std::unique_ptr<SocketConnection> connection;
+    
 
 private:
-    std::unique_ptr<SocketConnection> connection;
     
     // Serialize garbled circuit for network transmission
     std::vector<uint8_t> serialize_garbled_circuit(const GarbledCircuit& gc);
