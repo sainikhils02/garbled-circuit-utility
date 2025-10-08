@@ -63,10 +63,17 @@ int SocketUtils::connect_to_server(const std::string& hostname, int port) {
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(port);
     
-    // Convert hostname to IP address
+    // Try to convert hostname to IP address
     if (inet_pton(AF_INET, hostname.c_str(), &server_address.sin_addr) <= 0) {
-        close(client_socket);
-        throw NetworkException("Invalid hostname/IP address: " + hostname);
+        // Not a valid IP address, try hostname resolution
+        struct hostent* host_entry = gethostbyname(hostname.c_str());
+        if (host_entry == nullptr) {
+            close(client_socket);
+            throw NetworkException("Failed to resolve hostname: " + hostname);
+        }
+        
+        // Copy the IP address from hostname resolution
+        memcpy(&server_address.sin_addr, host_entry->h_addr_list[0], host_entry->h_length);
     }
     
     if (connect(client_socket, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) {
@@ -353,17 +360,31 @@ std::string ProtocolManager::receive_hello() {
 }
 
 void ProtocolManager::send_circuit(const GarbledCircuit& garbled_circuit) {
+    std::cout << "[PROTOCOL] Sending garbled circuit to evaluator" << std::endl;
+    std::cout << "           Circuit: " << garbled_circuit.circuit.gates.size() << " gates, " 
+              << garbled_circuit.circuit.num_inputs << " inputs, " 
+              << garbled_circuit.circuit.num_outputs << " outputs" << std::endl;
+    
     auto serialized = serialize_garbled_circuit(garbled_circuit);
+    std::cout << "           Serialized size: " << serialized.size() << " bytes" << std::endl;
     Message msg(MessageType::CIRCUIT, serialized);
     SocketUtils::send_message(connection->get_socket(), msg);
+    std::cout << "[PROTOCOL] Circuit transmission completed" << std::endl;
 }
 
 GarbledCircuit ProtocolManager::receive_circuit() {
+    std::cout << "[PROTOCOL] Waiting to receive garbled circuit..." << std::endl;
     Message msg = SocketUtils::receive_message(connection->get_socket());
+    std::cout << "[PROTOCOL] Received circuit data (" << msg.data.size() << " bytes)" << std::endl;
     if (msg.type != MessageType::CIRCUIT) {
         throw NetworkException("Expected CIRCUIT message");
     }
-    return deserialize_garbled_circuit(msg.data);
+    auto gc = deserialize_garbled_circuit(msg.data);
+    std::cout << "[PROTOCOL] Circuit deserialization completed" << std::endl;
+    std::cout << "           Circuit: " << gc.circuit.gates.size() << " gates, " 
+              << gc.circuit.num_inputs << " inputs, " 
+              << gc.circuit.num_outputs << " outputs" << std::endl;
+    return gc;
 }
 
 void ProtocolManager::send_input_labels(const std::vector<WireLabel>& labels) {
@@ -452,9 +473,6 @@ bool ProtocolManager::is_connected() const {
 std::vector<uint8_t> ProtocolManager::serialize_garbled_circuit(const GarbledCircuit& gc) {
     std::vector<uint8_t> data;
     
-    // Serialize circuit metadata (simplified for this implementation)
-    // In a full implementation, this would be more comprehensive
-    
     // Add circuit basic info
     uint32_t num_gates = gc.circuit.num_gates;
     uint32_t num_inputs = gc.circuit.num_inputs;
@@ -475,8 +493,50 @@ std::vector<uint8_t> ProtocolManager::serialize_garbled_circuit(const GarbledCir
     data.push_back((num_outputs >> 8) & 0xFF);
     data.push_back(num_outputs & 0xFF);
     
-    // This would need to be expanded to include full circuit serialization
-    // For now, we'll use a placeholder
+    // Add input wires
+    for (int wire : gc.circuit.input_wires) {
+        data.push_back((wire >> 24) & 0xFF);
+        data.push_back((wire >> 16) & 0xFF);
+        data.push_back((wire >> 8) & 0xFF);
+        data.push_back(wire & 0xFF);
+    }
+    
+    // Add output wires  
+    for (int wire : gc.circuit.output_wires) {
+        data.push_back((wire >> 24) & 0xFF);
+        data.push_back((wire >> 16) & 0xFF);
+        data.push_back((wire >> 8) & 0xFF);
+        data.push_back(wire & 0xFF);
+    }
+    
+    // Add gates
+    for (const auto& gate : gc.circuit.gates) {
+        data.push_back((gate.input_wire1 >> 24) & 0xFF);
+        data.push_back((gate.input_wire1 >> 16) & 0xFF);
+        data.push_back((gate.input_wire1 >> 8) & 0xFF);
+        data.push_back(gate.input_wire1 & 0xFF);
+        
+        data.push_back((gate.input_wire2 >> 24) & 0xFF);
+        data.push_back((gate.input_wire2 >> 16) & 0xFF);
+        data.push_back((gate.input_wire2 >> 8) & 0xFF);
+        data.push_back(gate.input_wire2 & 0xFF);
+        
+        data.push_back((gate.output_wire >> 24) & 0xFF);
+        data.push_back((gate.output_wire >> 16) & 0xFF);
+        data.push_back((gate.output_wire >> 8) & 0xFF);
+        data.push_back(gate.output_wire & 0xFF);
+        
+        data.push_back(static_cast<uint8_t>(gate.type));
+    }
+    
+    // Add garbled gates (ciphertexts)
+    for (size_t i = 0; i < gc.garbled_gates.size(); ++i) {
+        const auto& garbled_gate = gc.garbled_gates[i];
+        for (size_t j = 0; j < garbled_gate.ciphertexts.size(); ++j) {
+            const auto& ciphertext = garbled_gate.ciphertexts[j];
+            data.insert(data.end(), ciphertext.begin(), ciphertext.end());
+        }
+    }
     
     return data;
 }
@@ -487,6 +547,7 @@ GarbledCircuit ProtocolManager::deserialize_garbled_circuit(const std::vector<ui
     }
     
     GarbledCircuit gc;
+    size_t offset = 0;
     
     // Deserialize basic info
     uint32_t num_gates = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
@@ -496,8 +557,59 @@ GarbledCircuit ProtocolManager::deserialize_garbled_circuit(const std::vector<ui
     gc.circuit.num_gates = num_gates;
     gc.circuit.num_inputs = num_inputs;
     gc.circuit.num_outputs = num_outputs;
+    offset = 12;
     
-    // This would need to be expanded for full deserialization
+    // Deserialize input wires
+    for (uint32_t i = 0; i < num_inputs; ++i) {
+        if (offset + 4 > data.size()) throw NetworkException("Invalid circuit data: input wires");
+        int wire = (data[offset] << 24) | (data[offset+1] << 16) | (data[offset+2] << 8) | data[offset+3];
+        gc.circuit.input_wires.push_back(wire);
+        offset += 4;
+    }
+    
+    // Deserialize output wires
+    for (uint32_t i = 0; i < num_outputs; ++i) {
+        if (offset + 4 > data.size()) throw NetworkException("Invalid circuit data: output wires");
+        int wire = (data[offset] << 24) | (data[offset+1] << 16) | (data[offset+2] << 8) | data[offset+3];
+        gc.circuit.output_wires.push_back(wire);
+        offset += 4;
+    }
+    
+    // Deserialize gates
+    for (uint32_t i = 0; i < num_gates; ++i) {
+        if (offset + 13 > data.size()) throw NetworkException("Invalid circuit data: gates");
+        
+        int input1 = (data[offset] << 24) | (data[offset+1] << 16) | (data[offset+2] << 8) | data[offset+3];
+        offset += 4;
+        
+        int input2 = (data[offset] << 24) | (data[offset+1] << 16) | (data[offset+2] << 8) | data[offset+3];
+        offset += 4;
+        
+        int output = (data[offset] << 24) | (data[offset+1] << 16) | (data[offset+2] << 8) | data[offset+3];
+        offset += 4;
+        
+        GateType gate_type = static_cast<GateType>(data[offset]);
+        offset += 1;
+        
+        Gate gate(output, input1, input2, gate_type);
+        gc.circuit.gates.push_back(gate);
+    }
+    
+    // Deserialize garbled gates (ciphertexts)
+    std::cout << "[DEBUG] Deserializing " << num_gates << " garbled gates, offset=" << offset << ", total size=" << data.size() << std::endl;
+    gc.garbled_gates.resize(num_gates);
+    for (uint32_t i = 0; i < num_gates; ++i) {
+        for (int j = 0; j < 4; ++j) { // 4 ciphertexts per truth table
+            size_t ciphertext_size = WIRE_LABEL_SIZE + 16; // Size as defined in GarbledGate
+            if (offset + ciphertext_size > data.size()) {
+                throw NetworkException("Invalid circuit data: garbled gates");
+            }
+            
+            std::vector<uint8_t> ciphertext(data.begin() + offset, data.begin() + offset + ciphertext_size);
+            gc.garbled_gates[i].ciphertexts[j] = ciphertext;
+            offset += ciphertext_size;
+        }
+    }
     
     return gc;
 }

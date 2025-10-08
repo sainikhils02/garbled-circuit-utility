@@ -21,7 +21,8 @@ void runSender(std::string ip, int port, int numOTs)
     auto socket = coproto::asioConnect(ip + ":" + std::to_string(port), true);
     
     // Initialize PRNG with fixed seed for reproducible results
-    PRNG prng(block(12345, 67890));
+    //PRNG prng(block(12345, 67890));
+    PRNG prng(sysRandomSeed());
     
     // Prepare data structures for base OTs (128 base OTs required for IKNP)
     std::vector<block> baseRecv(128);        // Received messages from base OT
@@ -73,7 +74,8 @@ void runReceiver(std::string ip, int port, int numOTs)
     auto socket = coproto::asioConnect(ip + ":" + std::to_string(port), false);
     
     // Initialize PRNG with same seed as sender for proper synchronization
-    PRNG prng(block(12345, 67890));
+    //PRNG prng(block(12345, 67890));
+    PRNG prng(sysRandomSeed()); 
     
     // CRITICAL: Synchronize PRNG state with sender
     // Sender uses PRNG first for baseChoice, so we must match that

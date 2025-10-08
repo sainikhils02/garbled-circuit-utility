@@ -3,7 +3,7 @@
 #include "common.h"
 #include "socket_utils.h"
 
-// libOTe includes
+#include </mnt/c/Users/saini/Downloads/UGP/coproto/coproto/coproto.h>
 #include </mnt/c/Users/saini/Downloads/UGP/libOTe/libOTe/TwoChooseOne/Iknp/IknpOtExtSender.h>
 #include </mnt/c/Users/saini/Downloads/UGP/libOTe/libOTe/TwoChooseOne/Iknp/IknpOtExtReceiver.h>
 #include </mnt/c/Users/saini/Downloads/UGP/libOTe/libOTe/Base/SimplestOT.h>
@@ -52,6 +52,16 @@ public:
                                      SocketConnection& connection);
 
     /**
+     * Advanced libOTe IKNP OT extension methods 
+     * (for when you have proper coproto::Socket bridge)
+     */
+    void perform_iknp_ot_extension_send(const std::vector<std::pair<WireLabel, WireLabel>>& pairs,
+                                        coproto::Socket& socket);
+    
+    std::vector<WireLabel> perform_iknp_ot_extension_receive(const std::vector<bool>& choices,
+                                                            coproto::Socket& socket);
+
+    /**
      * Utility functions
      */
     void reset();
@@ -84,8 +94,8 @@ private:
     void perform_base_ots_as_receiver(coproto::Socket& socket);
     
     // Conversion utilities
-    static block wire_label_to_block(const WireLabel& label);
-    static WireLabel block_to_wire_label(const block& blk);
+    block wire_label_to_block(const WireLabel& label);
+    WireLabel block_to_wire_label(const block& blk);
     
     // Socket conversion (SocketConnection -> coproto::Socket)
     coproto::Socket create_coproto_socket(SocketConnection& connection);
@@ -105,6 +115,14 @@ public:
     
     static std::vector<WireLabel> receive_batch_ot(const std::vector<bool>& choices,
                                                   SocketConnection& connection);
+
+    /**
+     * Individual wire label OT operations
+     */
+    static void send_wire_label_ot(const WireLabel& label0, const WireLabel& label1,
+                                   SocketConnection& connection);
+    
+    static WireLabel receive_wire_label_ot(bool choice, SocketConnection& connection);
 
 private:
     SimpleOT() = default;  // Static class

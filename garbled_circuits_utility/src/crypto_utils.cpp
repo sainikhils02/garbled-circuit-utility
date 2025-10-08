@@ -72,7 +72,8 @@ std::vector<uint8_t> CryptoUtils::encrypt_label(const WireLabel& output_label,
     std::vector<uint8_t> enc_key(prf_output.begin(), prf_output.begin() + WIRE_LABEL_SIZE);
     
     // Encrypt using AES
-    return aes_encrypt(plaintext, enc_key);
+    auto ciphertext = aes_encrypt(plaintext, enc_key);
+    return ciphertext;
 }
 
 WireLabel CryptoUtils::decrypt_label(const std::vector<uint8_t>& ciphertext,
@@ -226,6 +227,7 @@ std::vector<uint8_t> CryptoUtils::aes_encrypt(const std::vector<uint8_t>& plaint
     
     EVP_CIPHER_CTX_free(ctx);
     ciphertext.resize(len1 + len2);
+    
     return ciphertext;
 }
 

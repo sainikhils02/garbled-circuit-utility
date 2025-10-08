@@ -168,10 +168,16 @@ private:
         std::string evaluator_name = protocol.receive_hello();
         std::cout << "Connected to: " << evaluator_name << std::endl;
         
-        // Step 2: Send garbled circuit
-        if (verbose) {
-            std::cout << "Sending garbled circuit..." << std::endl;
+        // Display protocol information
+        std::cout << "\n=== GARBLED CIRCUIT PROTOCOL ===" << std::endl;
+        std::cout << "Garbler Input:  ";
+        for (bool bit : garbler_inputs) {
+            std::cout << (bit ? '1' : '0');
         }
+        std::cout << " (decimal: " << CircuitUtils::bits_to_int(garbler_inputs) << ")" << std::endl;
+        
+        // Step 2: Send garbled circuit
+        std::cout << "\n[STEP 1] Sending garbled circuit to evaluator..." << std::endl;
         protocol.send_circuit(gc);
         
         // Step 3: Send garbler's input labels
@@ -181,24 +187,21 @@ private:
         }
         
         if (!garbler_inputs.empty()) {
+            std::cout << "[STEP 2] Sending garbler's input labels..." << std::endl;
             auto garbler_labels = garbler.encode_inputs(gc, garbler_inputs, garbler_wire_indices);
             protocol.send_input_labels(garbler_labels);
-            
-            if (verbose) {
-                std::cout << "Sent " << garbler_labels.size() << " input labels" << std::endl;
-            }
+            std::cout << "           Sent " << garbler_labels.size() << " wire labels for garbler's inputs" << std::endl;
         }
         
         // Step 4: Perform OT for evaluator's inputs
         size_t evaluator_input_count = gc.circuit.num_inputs - garbler_inputs.size();
         if (evaluator_input_count > 0) {
+            std::cout << "[STEP 3] Performing OT for evaluator's " << evaluator_input_count << " inputs..." << std::endl;
             perform_ot_for_evaluator(protocol, gc, garbler, evaluator_input_count);
         }
         
         // Step 5: Receive result
-        if (verbose) {
-            std::cout << "Waiting for evaluation result..." << std::endl;
-        }
+        std::cout << "[STEP 4] Waiting for evaluation result..." << std::endl;
         
         auto result_data = protocol.receive_result();
         
@@ -215,20 +218,17 @@ private:
         // Decode the final result
         auto final_result = garbler.decode_outputs(gc, output_labels);
         
-        std::cout << "\n=== RESULT ===" << std::endl;
-        std::cout << "Output: ";
+        std::cout << "\n=== PROTOCOL RESULT ===" << std::endl;
+        std::cout << "Circuit Output: ";
         for (bool bit : final_result) {
             std::cout << (bit ? '1' : '0');
         }
-        std::cout << std::endl;
+        std::cout << " (decimal: " << (final_result[0] ? 1 : 0) << ")" << std::endl;
         
-        // For debugging, also show as integer if single output
-        if (final_result.size() == 1) {
-            std::cout << "Output (decimal): " << (final_result[0] ? 1 : 0) << std::endl;
-        } else if (final_result.size() <= 32) {
-            int value = CircuitUtils::bits_to_int(final_result);
-            std::cout << "Output (decimal): " << value << std::endl;
-        }
+        // Show computation summary
+        std::cout << "\n=== COMPUTATION SUMMARY ===" << std::endl;
+        std::cout << "Function computed: Garbler(" << CircuitUtils::bits_to_int(garbler_inputs) 
+                  << ") ⊕ Evaluator(?) = " << (final_result[0] ? 1 : 0) << std::endl;
         
         protocol.send_goodbye();
     }
@@ -237,10 +237,6 @@ private:
                                  const GarbledCircuit& gc,
                                  Garbler& garbler,
                                  size_t evaluator_input_count) {
-        
-        if (verbose) {
-            std::cout << "Performing OT for " << evaluator_input_count << " evaluator inputs..." << std::endl;
-        }
         
         // Get the wire indices for evaluator's inputs
         std::vector<int> evaluator_wire_indices;
@@ -257,10 +253,7 @@ private:
         // In a real implementation, this would use libOTe
         try {
             SimpleOT::send_batch_ot(label_pairs, *protocol.connection);
-            
-            if (verbose) {
-                std::cout << "OT completed successfully" << std::endl;
-            }
+            std::cout << "           OT completed successfully for " << evaluator_input_count << " wires" << std::endl;
         } catch (const std::exception& e) {
             std::cerr << "OT failed: " << e.what() << std::endl;
             throw;

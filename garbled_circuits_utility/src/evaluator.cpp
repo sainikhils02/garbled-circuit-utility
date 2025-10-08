@@ -138,98 +138,75 @@ private:
         std::string garbler_name = protocol.receive_hello();
         std::cout << "Connected to: " << garbler_name << std::endl;
         
-        // Step 2: Receive garbled circuit
-        if (verbose) {
-            std::cout << "Receiving garbled circuit..." << std::endl;
+        // Display protocol information  
+        std::cout << "\n=== GARBLED CIRCUIT PROTOCOL ===" << std::endl;
+        std::cout << "Evaluator Input: ";
+        for (bool bit : evaluator_inputs) {
+            std::cout << (bit ? '1' : '0');
         }
+        std::cout << " (decimal: " << CircuitUtils::bits_to_int(evaluator_inputs) << ")" << std::endl;
+        
+        // Step 2: Receive garbled circuit
+        std::cout << "\n[STEP 1] Receiving garbled circuit from garbler..." << std::endl;
         
         auto garbled_circuit = protocol.receive_circuit();
-        
-        if (verbose) {
-            std::cout << "Received garbled circuit with " << garbled_circuit.circuit.num_gates << " gates" << std::endl;
-            CircuitUtils::print_circuit(garbled_circuit.circuit);
-        }
         
         // Step 3: Receive garbler's input labels (if any)
         std::vector<WireLabel> all_input_labels;
         size_t garbler_input_count = garbled_circuit.circuit.num_inputs - evaluator_inputs.size();
         
         if (garbler_input_count > 0) {
-            if (verbose) {
-                std::cout << "Receiving " << garbler_input_count << " garbler input labels..." << std::endl;
-            }
+            std::cout << "[STEP 2] Receiving garbler's input labels..." << std::endl;
             
             auto garbler_labels = protocol.receive_input_labels(garbler_input_count);
             all_input_labels.insert(all_input_labels.end(), garbler_labels.begin(), garbler_labels.end());
-            
-            if (verbose) {
-                std::cout << "Received " << garbler_labels.size() << " input labels from garbler" << std::endl;
-            }
+            std::cout << "           Received " << garbler_labels.size() << " wire labels for garbler's inputs" << std::endl;
         }
         
         // Step 4: Perform OT to get evaluator's input labels
         if (!evaluator_inputs.empty()) {
+            std::cout << "[STEP 3] Performing OT to obtain evaluator's input labels..." << std::endl;
             auto evaluator_labels = perform_ot_for_inputs(protocol, evaluator_inputs);
             all_input_labels.insert(all_input_labels.end(), evaluator_labels.begin(), evaluator_labels.end());
-            
-            if (verbose) {
-                std::cout << "Obtained " << evaluator_labels.size() << " input labels via OT" << std::endl;
-            }
+            std::cout << "           Obtained " << evaluator_labels.size() << " wire labels via OT" << std::endl;
         }
         
         // Step 5: Evaluate the garbled circuit
-        if (verbose) {
-            std::cout << "Evaluating garbled circuit..." << std::endl;
-        }
+        std::cout << "[STEP 4] Evaluating garbled circuit..." << std::endl;
         
         Evaluator evaluator;
         auto output_labels = evaluator.evaluate_circuit(garbled_circuit, all_input_labels);
         
-        if (verbose) {
-            auto stats = evaluator.get_evaluation_stats();
-            std::cout << "Evaluation completed:" << std::endl;
-            std::cout << "  Gates evaluated: " << stats.gates_evaluated << std::endl;
-            std::cout << "  Decryption attempts: " << stats.decryption_attempts << std::endl;
-            std::cout << "  Successful decryptions: " << stats.successful_decryptions << std::endl;
-            std::cout << "  Time: " << stats.total_time.count() << " microseconds" << std::endl;
-        }
+        auto stats = evaluator.get_evaluation_stats();
+        std::cout << "           Successfully evaluated " << stats.gates_evaluated << " gates" << std::endl;
+        std::cout << "           Evaluation time: " << stats.total_time.count() << " microseconds" << std::endl;
         
         // Step 6: Send result back to garbler
+        std::cout << "[STEP 5] Sending evaluation result to garbler..." << std::endl;
         std::vector<uint8_t> result_data;
         for (const auto& label : output_labels) {
             result_data.insert(result_data.end(), label.begin(), label.end());
         }
         
         protocol.send_result(result_data);
+        std::cout << "           Result transmission completed" << std::endl;
         
-        if (verbose) {
-            std::cout << "Sent evaluation result to garbler" << std::endl;
-        }
+        std::cout << "\n=== PROTOCOL COMPLETED ===" << std::endl;
         
         // Wait for goodbye
         auto msg = protocol.receive_any_message();
         if (msg.type == MessageType::GOODBYE) {
-            if (verbose) {
-                std::cout << "Received goodbye from garbler" << std::endl;
-            }
+            std::cout << "Protocol terminated successfully" << std::endl;
         }
     }
     
     std::vector<WireLabel> perform_ot_for_inputs(ProtocolManager& protocol,
                                                 const std::vector<bool>& evaluator_inputs) {
         
-        if (verbose) {
-            std::cout << "Performing OT for " << evaluator_inputs.size() << " inputs..." << std::endl;
-        }
-        
         try {
             // For this simplified implementation, we'll use the simple OT
             // In a real implementation, this would use libOTe
             auto labels = SimpleOT::receive_batch_ot(evaluator_inputs, *protocol.connection);
-            
-            if (verbose) {
-                std::cout << "OT completed successfully" << std::endl;
-            }
             
             return labels;
         } catch (const std::exception& e) {
