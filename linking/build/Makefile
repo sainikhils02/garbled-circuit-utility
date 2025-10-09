@@ -129,6 +129,19 @@ iknp_ot_example/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/iknp_ot_example.dir/build.make CMakeFiles/iknp_ot_example.dir/build
 .PHONY : iknp_ot_example/fast
 
+#=============================================================================
+# Target rules for targets named simplest_ot_example
+
+# Build rule for target.
+simplest_ot_example: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 simplest_ot_example
+.PHONY : simplest_ot_example
+
+# fast build rule for target.
+simplest_ot_example/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simplest_ot_example.dir/build.make CMakeFiles/simplest_ot_example.dir/build
+.PHONY : simplest_ot_example/fast
+
 iknp_ot_example.o: iknp_ot_example.cpp.o
 .PHONY : iknp_ot_example.o
 
@@ -153,6 +166,30 @@ iknp_ot_example.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/iknp_ot_example.dir/build.make CMakeFiles/iknp_ot_example.dir/iknp_ot_example.cpp.s
 .PHONY : iknp_ot_example.cpp.s
 
+simplest_ot_example.o: simplest_ot_example.cpp.o
+.PHONY : simplest_ot_example.o
+
+# target to build an object file
+simplest_ot_example.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simplest_ot_example.dir/build.make CMakeFiles/simplest_ot_example.dir/simplest_ot_example.cpp.o
+.PHONY : simplest_ot_example.cpp.o
+
+simplest_ot_example.i: simplest_ot_example.cpp.i
+.PHONY : simplest_ot_example.i
+
+# target to preprocess a source file
+simplest_ot_example.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simplest_ot_example.dir/build.make CMakeFiles/simplest_ot_example.dir/simplest_ot_example.cpp.i
+.PHONY : simplest_ot_example.cpp.i
+
+simplest_ot_example.s: simplest_ot_example.cpp.s
+.PHONY : simplest_ot_example.s
+
+# target to generate assembly for a file
+simplest_ot_example.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simplest_ot_example.dir/build.make CMakeFiles/simplest_ot_example.dir/simplest_ot_example.cpp.s
+.PHONY : simplest_ot_example.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -162,9 +199,13 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... iknp_ot_example"
+	@echo "... simplest_ot_example"
 	@echo "... iknp_ot_example.o"
 	@echo "... iknp_ot_example.i"
 	@echo "... iknp_ot_example.s"
+	@echo "... simplest_ot_example.o"
+	@echo "... simplest_ot_example.i"
+	@echo "... simplest_ot_example.s"
 .PHONY : help
 
 

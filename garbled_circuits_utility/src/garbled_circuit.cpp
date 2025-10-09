@@ -8,7 +8,6 @@
 #include <set>
 #include <sstream>
 
-// GarbledCircuitManager implementation
 GarbledCircuitManager::GarbledCircuitManager() {
 }
 
@@ -33,7 +32,7 @@ Circuit GarbledCircuitManager::parse_circuit(const std::string& circuit_descript
     while (std::getline(iss, line)) {
         line = trim_string(line);
         if (line.empty() || line[0] == '#') {
-            continue; // Skip empty lines and comments
+            continue;
         }
         
         parse_circuit_line(line, circuit);
@@ -70,22 +69,18 @@ Circuit GarbledCircuitManager::parse_circuit(const std::string& circuit_descript
 }
 
 void GarbledCircuitManager::parse_circuit_line(const std::string& line, Circuit& circuit) {
-    // Support inline comments and robust whitespace handling.
-    // Strip anything after a '#'.
     std::string work = line;
     auto hashPos = work.find('#');
     if (hashPos != std::string::npos) {
         work = work.substr(0, hashPos);
     }
-    // Trim whitespace.
     auto first_non = work.find_first_not_of(" \t\r\n");
     if (first_non == std::string::npos) {
-        return; // empty or comment line
+        return;
     }
     auto last_non = work.find_last_not_of(" \t\r\n");
     work = work.substr(first_non, last_non - first_non + 1);
 
-    // Tokenize using stringstream to collapse multiple spaces/tabs
     std::istringstream iss(work);
     std::vector<std::string> tokens;
     std::string tok;
@@ -111,7 +106,6 @@ void GarbledCircuitManager::parse_circuit_line(const std::string& line, Circuit&
             throw std::runtime_error("Invalid OUTPUTS line format");
         }
         circuit.num_outputs = std::stoi(tokens[1]);
-        // Output wires will be determined from gates
     }
     else if (command == "GATES") {
         if (tokens.size() != 2) {
@@ -143,7 +137,6 @@ void GarbledCircuitManager::parse_circuit_line(const std::string& line, Circuit&
             throw std::runtime_error("Invalid GATE line format");
         }
         
-        // Update max wire number
         circuit.num_wires = std::max({circuit.num_wires, output_wire, input1_wire});
         if (tokens.size() == 5) {
             circuit.num_wires = std::max(circuit.num_wires, std::stoi(tokens[3]));
@@ -152,7 +145,7 @@ void GarbledCircuitManager::parse_circuit_line(const std::string& line, Circuit&
 }
 
 bool GarbledCircuitManager::validate_circuit(const Circuit& circuit) {
-    // Basic validation checks
+    // validation checks
     if (circuit.num_inputs <= 0 || circuit.num_outputs <= 0 || circuit.num_gates <= 0) {
         return false;
     }
@@ -171,9 +164,7 @@ bool GarbledCircuitManager::validate_circuit(const Circuit& circuit) {
 bool GarbledCircuitManager::check_wire_consistency(const Circuit& circuit) {
     std::set<int> defined_wires(circuit.input_wires.begin(), circuit.input_wires.end());
     
-    // Check that all gates have properly defined inputs
     for (const auto& gate : circuit.gates) {
-        // Check if input wires are defined
         if (defined_wires.find(gate.input_wire1) == defined_wires.end()) {
             LOG_ERROR("Gate uses undefined wire: " << gate.input_wire1);
             return false;
@@ -200,7 +191,6 @@ bool GarbledCircuitManager::check_gate_validity(const Circuit& circuit) {
             return false;
         }
         
-        // Check unary vs binary gate consistency
         bool is_unary = (gate.type == GateType::NOT);
         if (is_unary && gate.input_wire2 != -1) {
             LOG_ERROR("Unary gate has two inputs");
@@ -238,7 +228,6 @@ std::string GarbledCircuitManager::trim_string(const std::string& str) {
     return str.substr(start, end - start + 1);
 }
 
-// Example circuit creation functions
 Circuit GarbledCircuitManager::create_and_gate_circuit() {
     Circuit circuit;
     circuit.num_inputs = 2;
@@ -288,7 +277,6 @@ Circuit GarbledCircuitManager::create_xor_gate_circuit() {
 }
 
 Circuit GarbledCircuitManager::create_comparison_circuit(int bit_width) {
-    // Create a circuit that compares two bit_width-bit numbers
     // Returns 1 if first number >= second number
     
     Circuit circuit;
@@ -332,7 +320,6 @@ Circuit GarbledCircuitManager::create_comparison_circuit(int bit_width) {
     return circuit;
 }
 
-// Garbler implementation
 Garbler::Garbler() {
 }
 
@@ -508,23 +495,16 @@ void Garbler::generate_garbled_table(GarbledGate& garbled_gate,
                                    const WireLabel& in2_label0,
                                    const WireLabel& in2_label1) {
     
-    // std::cout << "[DEBUG] Garbling gate " << gate_id << " with input labels:" << std::endl;
-    // std::cout << "[DEBUG] Input1_0: ";
     for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in1_label0[j];
     std::cout << std::endl;
-    // std::cout << "[DEBUG] Input1_1: ";
     for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in1_label1[j];
     std::cout << std::endl;
-    // std::cout << "[DEBUG] Input2_0: ";
     for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in2_label0[j];
     std::cout << std::endl;
-    // std::cout << "[DEBUG] Input2_1: ";
     for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in2_label1[j];
     std::cout << std::endl;
-    // std::cout << "[DEBUG] Output_0: ";
     for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)out_label0[j];
     std::cout << std::endl;
-    // std::cout << "[DEBUG] Output_1: ";
     for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)out_label1[j];
     std::cout << std::endl;
     
@@ -643,7 +623,6 @@ std::vector<bool> Garbler::decode_outputs(const GarbledCircuit& gc,
             throw GarblerException("Output wire mapping not found");
         }
         
-        // Debug: Show the labels being compared
         std::cout << "[OUTPUT DECODE] Wire " << output_wire << " comparison:" << std::endl;
         std::cout << "                Result label: ";
         for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)result_label[j];
@@ -677,7 +656,6 @@ std::vector<std::pair<WireLabel, WireLabel>> Garbler::get_ot_input_pairs(
             throw GarblerException("Wire not found for OT: " + std::to_string(wire_id));
         }
         
-        // Debug: Show what labels are being sent for OT
         std::cout << "[OT DEBUG] Wire " << wire_id << " - sending label pair:" << std::endl;
         std::cout << "           Label_0: ";
         for (int i = 0; i < 8; ++i) std::cout << std::hex << (int)it->second.first[i];
@@ -692,7 +670,6 @@ std::vector<std::pair<WireLabel, WireLabel>> Garbler::get_ot_input_pairs(
     return pairs;
 }
 
-// Evaluator implementation
 Evaluator::Evaluator() {
     reset_stats();
 }
@@ -720,7 +697,7 @@ std::vector<WireLabel> Evaluator::evaluate_circuit(const GarbledCircuit& gc,
         std::cout << std::dec << std::endl;
     }
     
-    // Evaluate gates in order
+    // Evaluate gates 
     for (size_t i = 0; i < gc.circuit.gates.size(); ++i) {
         const auto& gate = gc.circuit.gates[i];
         const auto& garbled_gate = gc.garbled_gates[i];
@@ -751,7 +728,6 @@ std::vector<WireLabel> Evaluator::evaluate_circuit(const GarbledCircuit& gc,
         eval_stats.gates_evaluated++;
     }
     
-    // Collect output labels
     std::vector<WireLabel> output_labels;
     output_labels.reserve(gc.circuit.output_wires.size());
     
@@ -822,7 +798,7 @@ WireLabel Evaluator::evaluate_gate(const GarbledGate& garbled_gate,
             eval_stats.successful_decryptions++;
             return result;
         } catch (const CryptoException& e) {
-            // Decryption failed, try next ciphertext
+            // Decryption failed, try next cipher
             std::cout << "             ✗ Failed: " << e.what() << std::endl;
             continue;
         }
@@ -836,9 +812,6 @@ WireLabel Evaluator::evaluate_unary_gate(const GarbledGate& garbled_gate,
                                         int gate_id) {
     eval_stats.decryption_attempts++;
 
-    // For unary gates we permute the entire 4-entry table (two real, two dummy),
-    // so we must attempt all 4 ciphertexts. Only the correct one should decrypt
-    // successfully (padding check) under (input_label, zero_label) PRF key pair.
     for (size_t i = 0; i < 4; ++i) {
         try {
             WireLabel result = CryptoUtils::decrypt_label(
@@ -897,7 +870,7 @@ std::vector<bool> CircuitUtils::evaluate_plaintext(const Circuit& circuit,
         wire_values[circuit.input_wires[i]] = inputs[i];
     }
     
-    // Evaluate gates in order
+    // Evaluate gates 
     for (const auto& gate : circuit.gates) {
         bool result;
         
@@ -987,7 +960,7 @@ bool CircuitUtils::test_circuit_correctness(const Circuit& circuit, size_t num_t
     Garbler garbler;
     Evaluator evaluator;
     
-    // Garble the circuit once
+    // Garble the circuit 
     auto garbled_circuit = garbler.garble_circuit(circuit);
     
     for (size_t test = 0; test < num_tests; ++test) {
@@ -1063,7 +1036,6 @@ void CircuitUtils::print_inputs_outputs(const std::vector<bool>& inputs,
     std::cout << std::endl;
 }
 
-// File format implementations (simplified)
 namespace FileFormats {
     
     Circuit load_simple_circuit(const std::string& filename) {
@@ -1186,4 +1158,4 @@ namespace FileFormats {
         file.close();
     }
     
-} // namespace FileFormats
+}

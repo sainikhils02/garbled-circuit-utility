@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <sstream>
 
-// SocketUtils implementation
 int SocketUtils::create_server_socket(int port) {
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket < 0) {
@@ -63,7 +62,7 @@ int SocketUtils::connect_to_server(const std::string& hostname, int port) {
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(port);
     
-    // Try to convert hostname to IP address
+    //Convert hostname to IP address
     if (inet_pton(AF_INET, hostname.c_str(), &server_address.sin_addr) <= 0) {
         // Not a valid IP address, try hostname resolution
         struct hostent* host_entry = gethostbyname(hostname.c_str());
@@ -91,7 +90,7 @@ void SocketUtils::send_message(int socket, const Message& message) {
 }
 
 Message SocketUtils::receive_message(int socket) {
-    // First receive message header (type + size)
+    // First receive message header 
     uint8_t header[5]; // 1 byte type + 4 bytes size
     receive_all(socket, header, 5);
     
@@ -197,8 +196,6 @@ bool SocketUtils::socket_ready_for_write(int socket, int timeout_ms) {
 }
 
 std::string SocketUtils::get_local_ip() {
-    // This is a simplified implementation
-    // In practice, you might want to use getifaddrs() for more robust IP detection
     return "127.0.0.1";
 }
 
@@ -208,7 +205,7 @@ std::vector<uint8_t> SocketUtils::serialize_message(const Message& message) {
     // Add message type
     serialized.push_back(static_cast<uint8_t>(message.type));
     
-    // Add message size (big-endian)
+    // Add message size 
     uint32_t size = message.size;
     serialized.push_back((size >> 24) & 0xFF);
     serialized.push_back((size >> 16) & 0xFF);
@@ -245,7 +242,7 @@ void SocketUtils::send_all(int socket, const void* data, size_t size) {
         ssize_t sent = send(socket, bytes + total_sent, size - total_sent, MSG_NOSIGNAL);
         if (sent < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                continue; // Try again
+                continue; 
             }
             throw_network_error("send");
         }
@@ -261,7 +258,7 @@ void SocketUtils::receive_all(int socket, void* data, size_t size) {
         ssize_t received = recv(socket, bytes + total_received, size - total_received, 0);
         if (received < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                continue; // Try again
+                continue; 
             }
             throw_network_error("recv");
         } else if (received == 0) {
@@ -337,7 +334,6 @@ void SocketConnection::cleanup() {
     }
 }
 
-// ProtocolManager implementation
 ProtocolManager::ProtocolManager(std::unique_ptr<SocketConnection> conn) 
     : connection(std::move(conn)) {
     if (!connection || !connection->is_connected()) {
@@ -529,7 +525,7 @@ std::vector<uint8_t> ProtocolManager::serialize_garbled_circuit(const GarbledCir
         data.push_back(static_cast<uint8_t>(gate.type));
     }
     
-    // Add garbled gates (ciphertexts)
+    // Add garbled gates 
     for (size_t i = 0; i < gc.garbled_gates.size(); ++i) {
         const auto& garbled_gate = gc.garbled_gates[i];
         for (size_t j = 0; j < garbled_gate.ciphertexts.size(); ++j) {

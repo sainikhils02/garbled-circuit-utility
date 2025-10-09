@@ -64,6 +64,7 @@ CMAKE_BINARY_DIR = /mnt/c/Users/saini/Downloads/UGP/linking/build
 
 # The main recursive "all" target.
 all: CMakeFiles/iknp_ot_example.dir/all
+all: CMakeFiles/simplest_ot_example.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -72,6 +73,7 @@ preinstall:
 
 # The main recursive "clean" target.
 clean: CMakeFiles/iknp_ot_example.dir/clean
+clean: CMakeFiles/simplest_ot_example.dir/clean
 .PHONY : clean
 
 #=============================================================================
@@ -99,6 +101,32 @@ iknp_ot_example: CMakeFiles/iknp_ot_example.dir/rule
 CMakeFiles/iknp_ot_example.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/iknp_ot_example.dir/build.make CMakeFiles/iknp_ot_example.dir/clean
 .PHONY : CMakeFiles/iknp_ot_example.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/simplest_ot_example.dir
+
+# All Build rule for target.
+CMakeFiles/simplest_ot_example.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simplest_ot_example.dir/build.make CMakeFiles/simplest_ot_example.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simplest_ot_example.dir/build.make CMakeFiles/simplest_ot_example.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/mnt/c/Users/saini/Downloads/UGP/linking/build/CMakeFiles --progress-num=3,4 "Built target simplest_ot_example"
+.PHONY : CMakeFiles/simplest_ot_example.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/simplest_ot_example.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/saini/Downloads/UGP/linking/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/simplest_ot_example.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/saini/Downloads/UGP/linking/build/CMakeFiles 0
+.PHONY : CMakeFiles/simplest_ot_example.dir/rule
+
+# Convenience name for target.
+simplest_ot_example: CMakeFiles/simplest_ot_example.dir/rule
+.PHONY : simplest_ot_example
+
+# clean rule for target.
+CMakeFiles/simplest_ot_example.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simplest_ot_example.dir/build.make CMakeFiles/simplest_ot_example.dir/clean
+.PHONY : CMakeFiles/simplest_ot_example.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

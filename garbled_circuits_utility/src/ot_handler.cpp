@@ -61,8 +61,6 @@ void OTHandler::init_receiver(SocketConnection& connection) {
     LOG_INFO("SimplestOT receiver initialized");
 }
 
-// For now, no direct SimplestOT over raw POSIX socket is implemented.
-// We fail fast until a coproto::Socket bridge is provided.
 bool OTHandler::send_ot(const std::vector<std::pair<WireLabel, WireLabel>>& pairs, SocketConnection& connection) {
     if (!initialized || !is_sender) throw OTException("OT sender not properly initialized");
     if (pairs.empty()) return true;
@@ -110,7 +108,7 @@ void OTHandler::cleanup() { prng.reset(); }
 std::string OTHandler::resolve_endpoint() const {
     const char* env = std::getenv("GC_OT_ENDPOINT");
     if (env && std::strlen(env) > 0) return std::string(env);
-    return "127.0.0.1:9100"; // default
+    return "127.0.0.1:9100";
 }
 
 void OTHandler::simplest_ot_send(size_t n, std::vector<std::array<block,2>>& outPairs, const std::string& endpoint) {

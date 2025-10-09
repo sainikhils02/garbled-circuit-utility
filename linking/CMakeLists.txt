@@ -19,6 +19,10 @@ add_executable(iknp_ot_example iknp_ot_example.cpp)
 # Link against libOTe
 target_link_libraries(iknp_ot_example oc::libOTe)
 
+# SimplestOT base OT standalone example
+add_executable(simplest_ot_example simplest_ot_example.cpp)
+target_link_libraries(simplest_ot_example oc::libOTe)
+
 # Print debug information about libOTe
 message(STATUS "Found libOTe at: ${libOTe_DIR}")
 message(STATUS "libOTe version: ${libOTe_VERSION}")

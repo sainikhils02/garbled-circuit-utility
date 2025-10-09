@@ -6,7 +6,6 @@
 #include <getopt.h>
 
 /**
- * Evaluator program - acts as client in the protocol
  * Responsibilities:
  * 1. Connect to garbler
  * 2. Receive garbled circuit
@@ -16,21 +15,14 @@
  */
 class EvaluatorProgram {
 public:
-    EvaluatorProgram() : hostname("localhost"), port(DEFAULT_PORT), verbose(false) {}
+    EvaluatorProgram() : hostname("localhost"), port(DEFAULT_PORT) {}
     
     int run(int argc, char* argv[]) {
         try {
             if (!parse_arguments(argc, argv)) {
                 return 1;
             }
-            
-            if (verbose) {
-                std::cout << "Starting evaluator with parameters:" << std::endl;
-                std::cout << "  Host: " << hostname << std::endl;
-                std::cout << "  Port: " << port << std::endl;
-                std::cout << "  Input: " << input_string << std::endl;
-            }
-            
+                        
             // Parse evaluator inputs
             auto evaluator_inputs = parse_inputs();
             
@@ -54,22 +46,20 @@ private:
     std::string hostname;
     std::string input_string;
     int port;
-    bool verbose;
+    
     
     bool parse_arguments(int argc, char* argv[]) {
         static struct option long_options[] = {
             {"host", required_argument, 0, 'H'},
             {"port", required_argument, 0, 'p'},
             {"input", required_argument, 0, 'i'},
-            {"verbose", no_argument, 0, 'v'},
-            {"help", no_argument, 0, 'h'},
             {0, 0, 0, 0}
         };
         
         int opt;
         int option_index = 0;
         
-        while ((opt = getopt_long(argc, argv, "H:p:i:vh", long_options, &option_index)) != -1) {
+        while ((opt = getopt_long(argc, argv, "H:p:i:", long_options, &option_index)) != -1) {
             switch (opt) {
                 case 'H':
                     hostname = optarg;
@@ -80,34 +70,12 @@ private:
                 case 'i':
                     input_string = optarg;
                     break;
-                case 'v':
-                    verbose = true;
-                    break;
-                case 'h':
-                    print_help();
-                    return false;
                 default:
-                    print_help();
                     return false;
             }
         }
         
         return true;
-    }
-    
-    void print_help() {
-        std::cout << "Garbled Circuits Evaluator" << std::endl;
-        std::cout << "Usage: evaluator [OPTIONS]" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Options:" << std::endl;
-        std::cout << "  -H, --host HOST        Garbler hostname (default: localhost)" << std::endl;
-        std::cout << "  -p, --port PORT        Port to connect to (default: " << DEFAULT_PORT << ")" << std::endl;
-        std::cout << "  -i, --input BITS       Evaluator's input bits (e.g., '101')" << std::endl;
-        std::cout << "  -v, --verbose          Enable verbose output" << std::endl;
-        std::cout << "  -h, --help             Show this help message" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Example:" << std::endl;
-        std::cout << "  evaluator -H localhost -p 8080 -i 0" << std::endl;
     }
     
     std::vector<bool> parse_inputs() {
@@ -133,7 +101,7 @@ private:
     void execute_protocol(ProtocolManager& protocol, 
                          const std::vector<bool>& evaluator_inputs) {
         
-        // Step 1: Exchange hello messages
+        // Step 0: Exchange hello messages
         protocol.send_hello("Evaluator");
         std::string garbler_name = protocol.receive_hello();
         std::cout << "Connected to: " << garbler_name << std::endl;
@@ -146,12 +114,12 @@ private:
         }
         std::cout << " (decimal: " << CircuitUtils::bits_to_int(evaluator_inputs) << ")" << std::endl;
         
-        // Step 2: Receive garbled circuit
+        // Step 1: Receive garbled circuit
         std::cout << "\n[STEP 1] Receiving garbled circuit from garbler..." << std::endl;
         
         auto garbled_circuit = protocol.receive_circuit();
         
-        // Step 3: Receive garbler's input labels (if any)
+        // Step 2: Receive garbler's input labels
         std::vector<WireLabel> all_input_labels;
         size_t garbler_input_count = garbled_circuit.circuit.num_inputs - evaluator_inputs.size();
         
@@ -163,7 +131,7 @@ private:
             std::cout << "           Received " << garbler_labels.size() << " wire labels for garbler's inputs" << std::endl;
         }
         
-        // Step 4: Perform OT to get evaluator's input labels
+        // Step 3: Perform OT to get evaluator's input labels
         if (!evaluator_inputs.empty()) {
             std::cout << "[STEP 3] Performing OT to obtain evaluator's input labels..." << std::endl;
             auto evaluator_labels = perform_ot_for_inputs(protocol, evaluator_inputs);
@@ -171,7 +139,7 @@ private:
             std::cout << "           Obtained " << evaluator_labels.size() << " wire labels via OT" << std::endl;
         }
         
-        // Step 5: Evaluate the garbled circuit
+        // Step 4: Evaluate the garbled circuit
         std::cout << "[STEP 4] Evaluating garbled circuit..." << std::endl;
         
         Evaluator evaluator;
@@ -181,7 +149,7 @@ private:
         std::cout << "           Successfully evaluated " << stats.gates_evaluated << " gates" << std::endl;
         std::cout << "           Evaluation time: " << stats.total_time.count() << " microseconds" << std::endl;
         
-        // Step 6: Send result back to garbler
+        // Step 5: Send result back to garbler
         std::cout << "[STEP 5] Sending evaluation result to garbler..." << std::endl;
         std::vector<uint8_t> result_data;
         for (const auto& label : output_labels) {
@@ -209,7 +177,7 @@ private:
             auto labels = ot.receive_ot(evaluator_inputs, *protocol.connection);
             return labels;
         } catch (const std::exception& e) {
-            std::cerr << "OT failed (SimplestOT): " << e.what() << std::endl;
+            std::cerr << "OT failed: " << e.what() << std::endl;
             throw;
         }
     }
@@ -219,7 +187,7 @@ int main(int argc, char* argv[]) {
     // Initialize OpenSSL
     OpenSSLContext crypto_context;
     
-    std::cout << "Garbled Circuits Evaluator v1.0" << std::endl;
+    std::cout << "Garbled Circuits Evaluator" << std::endl;
     std::cout << "================================" << std::endl;
     
     EvaluatorProgram program;

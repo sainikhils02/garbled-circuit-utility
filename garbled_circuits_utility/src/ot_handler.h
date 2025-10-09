@@ -49,8 +49,6 @@ public:
     std::vector<WireLabel> receive_ot(const std::vector<bool>& choices,
                                      SocketConnection& connection);
 
-    // (IKNP extension removed in SimplestOT-only refactor)
-
     /**
      * Utility functions
      */
@@ -58,7 +56,6 @@ public:
     bool is_initialized() const { return initialized; }
     bool is_sender_role() const { return is_sender; }
     
-    // Get statistics
     size_t get_total_ots() const { return total_ots_performed; }
     
 private:
@@ -89,7 +86,6 @@ private:
  * Simplified interface for basic OT operations
  * Handles setup automatically
  */
-// Removed insecure SimpleOT placeholder. Real OTs are enforced.
 
 /**
  * Exception class for OT-related errors

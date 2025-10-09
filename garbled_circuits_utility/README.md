@@ -1,14 +1,15 @@
 # Garbled Circuits Utility
 
-A simple C++ implementation of Yao's Garbled Circuits protocol for secure two-party computation. This project allows two parties to jointly compute a function while keeping their inputs private.
+A simple C++ implementation of Yao's Garbled Circuits protocol for secure two‑party computation. Two parties jointly compute a function while keeping their inputs private. This repo includes a text‑based circuit format and a working OT integration using libOTe’s SimplestOT over coproto (Boost.Asio).
 
 ## Features
 
 - Basic implementation of Yao's Garbled Circuits
 - Socket-based communication between garbler and evaluator
-- Integration with libOTe library for oblivious transfers
-- Support for NAND-based boolean circuits
-- Simple examples (AND gate, Millionaire's problem)
+- Oblivious Transfer via libOTe SimplestOT using coproto (Boost.Asio)
+- Text netlist parser with inline comments
+- Supported gates: AND, OR, XOR, NAND, NOT 
+- Example circuits (AND gate, 4‑bit Millionaire’s simplified comparator)
 
 ## Project Structure
 
@@ -25,12 +26,13 @@ garbled_circuits_utility/
 │   ├── crypto_utils.h      # Crypto headers
 │   ├── socket_utils.cpp    # Network communication
 │   ├── socket_utils.h      # Socket headers
-│   └── main.cpp           # Main entry point
+│   └── main.cpp            # (if present) main entry point
 ├── include/                # Header files
 │   └── common.h           # Common definitions
-├── examples/              # Example programs
-│   ├── simple_and.cpp     # Simple AND gate example
-│   └── millionaires.cpp   # Millionaire's problem
+├── examples/               # Example circuits (text format)
+│   ├── simple_and.txt      # 2‑input AND
+│   ├── millionaires_4bit.txt# 4‑bit (A>=B) comparator
+│   └── ...
 ├── cmake/                 # CMake modules
 │   └── FindLibOTe.cmake   # LibOTe finder
 ├── CMakeLists.txt         # Build configuration
@@ -41,11 +43,13 @@ garbled_circuits_utility/
 
 ## Dependencies
 
-- **C++ Compiler**: GCC 7+ or Clang 11+ with C++17 support
-- **CMake**: Version 3.15 or higher
-- **libOTe**: For oblivious transfer operations
-- **OpenSSL**: For cryptographic functions
-- **Boost**: Required by libOTe (version 1.75+)
+- C++17 compiler (GCC 9+/Clang 11+ recommended)
+- CMake 3.15+
+- OpenSSL (dev headers)
+- Boost (dev headers; 1.75+)
+- Python 3 (for libOTe build script)
+- libOTe (SimplestOT)
+- coproto with Boost enabled (for Asio sockets)
 
 ## Installation
 
@@ -62,17 +66,49 @@ sudo apt-get install build-essential cmake git libssl-dev libboost-dev
 brew install cmake openssl boost
 ```
 
-### 2. Install libOTe
+### 2. Install libOTe and coproto
+
+You can keep the following sibling layout (as used by this repo):
+
+```
+<workspace>/
+   garbled_circuits_utility/
+   libOTe/
+   coproto/
+```
+
+Clone the dependencies:
 
 ```bash
-# Clone and build libOTe
 git clone https://github.com/osu-crypto/libOTe.git
-cd libOTe
-python3 build.py --setup
+git clone https://github.com/ladnir/coproto.git
+```
+
+Build coproto with Boost.Asio enabled:
+
+```bash
+cd coproto
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCOPROTO_ENABLE_BOOST=ON
+cmake --build build -j
 cd ..
 ```
 
-### 3. Build the Project
+Build libOTe (ensures coproto/Boost is available):
+
+```bash
+cd libOTe
+python3 build.py --setup
+# If needed, force Boost/coproto (varies by environment)
+python3 build.py -DCOPROTO_ENABLE_BOOST=ON
+cd ..
+```
+
+Locate libOTeConfig.cmake for CMake. Common locations after the script runs:
+
+- libOTe/build/out/install/lib/cmake/libOTe/libOTeConfig.cmake
+- or inside the build tree under a lib/cmake folder
+
+### 3. Build the project
 
 ```bash
 # Clone this project
@@ -82,7 +118,7 @@ cd garbled_circuits_utility
 mkdir build && cd build
 
 # Configure with CMake
-cmake .. -DCMAKE_BUILD_TYPE=Release -DlibOTe_DIR=/path/to/libOTe
+cmake .. -DCMAKE_BUILD_TYPE=Release -DlibOTe_DIR=/absolute/path/to/libOTeConfigDir
 
 # Build
 make -j4
@@ -99,43 +135,59 @@ chmod +x build.sh
 
 The utility provides two executables: one for the garbler and one for the evaluator.
 
-#### 1. Start the Garbler (Server)
+Environment variable (optional but recommended):
+
+- `GC_OT_ENDPOINT` — host:port used by SimplestOT’s secondary Asio channel.
+   - Default: `127.0.0.1:9100`
+   - The garbler (OT sender) listens on this endpoint; the evaluator connects to it.
+
+Example:
+
+```bash
+export GC_OT_ENDPOINT=127.0.0.1:9100
+```
+
+#### 1. Start the Garbler (server)
 ```bash
 ./build/garbler --port 8080 --circuit examples/simple_and.txt --input 1
 ```
 
-#### 2. Start the Evaluator (Client)
+#### 2. Start the Evaluator (client)
 ```bash
 ./build/evaluator --host localhost --port 8080 --input 0
 ```
 
-### Command Line Options
+### Command line options
 
-#### Garbler Options:
+Garbler:
 - `--port <port>`: Port to listen on (default: 8080)
-- `--circuit <file>`: Circuit description file
-- `--input <bits>`: Garbler's input bits
-- `--help`: Show help message
+- `--circuit <file>`: Circuit description file (text format)
+- `--input <bits>`: Garbler’s input bits (e.g., `1011`)
 
-#### Evaluator Options:
-- `--host <hostname>`: Garbler's hostname (default: localhost)
+Evaluator:
+- `--host <hostname>`: Garbler hostname (default: `localhost`)
 - `--port <port>`: Port to connect to (default: 8080)
-- `--input <bits>`: Evaluator's input bits
-- `--help`: Show help message
+- `--input <bits>`: Evaluator’s input bits
 
-### Circuit Format
+### Circuit format (text)
 
 Circuits are defined in a simple text format:
 
 ```
-# Simple AND gate circuit
-INPUTS 2      # Number of input wires
-OUTPUTS 1     # Number of output wires
-GATES 1       # Number of gates
+# Comments start with '#', inline comments are supported
 
-# Gate format: output_wire input1_wire input2_wire GATE_TYPE
-GATE 3 1 2 AND
+INPUTS N         # Number of input wires (wires 1..N)
+OUTPUTS M        # Number of output wires (count)
+GATES K          # Number of gates
+
+# Binary gate:  GATE <out> <in1> <in2> <TYPE>
+# Unary gate:   GATE <out> <in> <TYPE>
+# Supported TYPE: AND, OR, XOR, NAND, NOT
+
+GATE 3 1 2 AND   # example
 ```
+
+Output wires are inferred as gate outputs that are not consumed as any gate’s input. Ensure your circuit graph is acyclic and that exactly M such outputs exist.
 
 ## Examples
 
@@ -151,36 +203,35 @@ GATE 3 1 2 AND
 # Output: 0 (1 AND 0 = 0)
 ```
 
-### Example 2: Millionaire's Problem
+### Example 2: Millionaire's Problem (4‑bit simplified)
 
 ```bash
 # Terminal 1 (Alice with wealth = 50)
-./build/garbler --port 8080 --circuit examples/millionaires.txt --input 50
+./build/garbler --port 8080 --circuit examples/millionaires_4bit.txt --input 0101
 
 # Terminal 2 (Bob with wealth = 75)
-./build/evaluator --host localhost --port 8080 --input 75
+./build/evaluator --host localhost --port 8080 --input 0011
 
 # Output: 0 (Alice is not richer than Bob)
 ```
 
-## Implementation Details
+## Implementation details
 
 ### Security Model
-- **Semi-honest adversaries**: Parties follow the protocol but may try to learn additional information
-- **No optimizations**: This is a basic implementation without Free XOR, point-and-permute, or other optimizations
-- **Educational purpose**: Suitable for learning and understanding the protocol
+- Semi‑honest adversaries 
+- No optimizations like Free XOR/point‑and‑permute 
 
 ### Protocol Flow
-1. **Circuit Generation**: Garbler creates the boolean circuit
-2. **Garbling**: Each gate is encrypted using random labels
-3. **OT Phase**: Evaluator obtains garbled inputs via oblivious transfer
-4. **Evaluation**: Evaluator computes the garbled circuit
-5. **Output**: Result is revealed to both parties
+1. Circuit generation: garbler loads a text circuit
+2. Garbling: each gate produces 4 ciphertexts (NOT uses 2 real + 2 dummy), with integrity padding
+3. OT phase: evaluator obtains input labels via libOTe SimplestOT over coproto Asio (secondary socket)
+4. Evaluation: evaluator tries decryptions and forwards output labels
+5. Output: garbler decodes final bits
 
 ### Cryptographic Primitives
-- **PRF**: SHA-256 based pseudorandom function
-- **Encryption**: AES-based symmetric encryption
-- **OT**: libOTe implementation of oblivious transfer
+- PRF: SHA‑256 based on both input labels and gate id
+- Encryption: AES‑128‑ECB without PKCS padding; appends 16‑byte zero padding for integrity check
+- OT: libOTe SimplestOT; labels masked via SHA‑256 KDF of OT blocks
 
 ## Building from Source
 
@@ -199,13 +250,16 @@ make -j4
 ```
 
 ### Testing
-```bash
-# Run built-in tests
-cd build
-make test
+Minimal smoke test (two terminals):
 
-# Or run specific test
-./test_garbled_circuit
+```bash
+# Terminal 1
+export GC_OT_ENDPOINT=127.0.0.1:9100
+./build/garbler --port 8080 --circuit examples/simple_and.txt --input 1
+
+# Terminal 2
+export GC_OT_ENDPOINT=127.0.0.1:9100
+./build/evaluator --host localhost --port 8080 --input 0
 ```
 
 ## Troubleshooting
@@ -228,32 +282,23 @@ make test
    - Verify C++17 compiler support
    - Check all dependencies are installed
 
-### Debug Mode
+### Tips & troubleshooting
 
-Enable debug output:
-```bash
-export GC_DEBUG=1
-./build/garbler --port 8080 --circuit examples/simple_and.txt --input 1 --verbose
-```
+Common issues:
 
-## Contributing
+1) libOTe not found
+- Make sure `-DlibOTe_DIR` points to the directory that contains `libOTeConfig.cmake`.
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+2) coproto/Boost missing
+- Build coproto with `-DCOPROTO_ENABLE_BOOST=ON`.
+- Ensure Boost dev packages are installed.
 
-## License
+3) OT connection errors (hangs or refused)
+- Set the same `GC_OT_ENDPOINT` on both sides (default 127.0.0.1:9100).
+- Ensure the port is free and both processes can connect.
 
-This project is for educational purposes. See the individual dependencies for their respective licenses.
+4) Invalid circuit structure
+- Check `GATES` count matches the number of GATE lines.
+- Ensure wires are correctly referenced and the graph is acyclic.
+- Confirm exactly `OUTPUTS` many gate outputs are unconsumed by any gate inputs.
 
-## References
-
-- Yao, A. C. (1986). How to generate and exchange secrets
-- Bellare, M., Hoang, V. T., & Rogaway, P. (2012). Foundations of garbled circuits
-- libOTe: https://github.com/osu-crypto/libOTe
-
-## Support
-
-For questions and issues, please open a GitHub issue or contact the maintainer.

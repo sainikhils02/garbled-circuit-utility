@@ -23,7 +23,6 @@ int main(int argc, char* argv[]) {
 }
 
 // These functions are implemented in garbler.cpp and evaluator.cpp
-// but we provide stub implementations here for compilation safety
 int garbler_main(int argc, char* argv[]) {
     std::cerr << "Garbler main not linked properly!" << std::endl;
     return 1;
