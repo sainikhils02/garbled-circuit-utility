@@ -252,10 +252,14 @@ private:
         // For this simplified implementation, we'll use the simple OT
         // In a real implementation, this would use libOTe
         try {
-            SimpleOT::send_batch_ot(label_pairs, *protocol.connection);
-            std::cout << "           OT completed successfully for " << evaluator_input_count << " wires" << std::endl;
+            OTHandler ot;
+            ot.init_sender(*protocol.connection);
+            if(!ot.send_ot(label_pairs, *protocol.connection)){
+                throw std::runtime_error("SimplestOT send_ot reported failure");
+            }
+            std::cout << "           OT (SimplestOT) invoked for " << evaluator_input_count << " wires" << std::endl;
         } catch (const std::exception& e) {
-            std::cerr << "OT failed: " << e.what() << std::endl;
+            std::cerr << "OT failed (SimplestOT): " << e.what() << std::endl;
             throw;
         }
     }

@@ -4,8 +4,6 @@
 #include "socket_utils.h"
 
 #include </mnt/c/Users/saini/Downloads/UGP/coproto/coproto/coproto.h>
-#include </mnt/c/Users/saini/Downloads/UGP/libOTe/libOTe/TwoChooseOne/Iknp/IknpOtExtSender.h>
-#include </mnt/c/Users/saini/Downloads/UGP/libOTe/libOTe/TwoChooseOne/Iknp/IknpOtExtReceiver.h>
 #include </mnt/c/Users/saini/Downloads/UGP/libOTe/libOTe/Base/SimplestOT.h>
 #include </mnt/c/Users/saini/Downloads/UGP/libOTe/cryptoTools/cryptoTools/Common/Defines.h>
 #include </mnt/c/Users/saini/Downloads/UGP/libOTe/cryptoTools/cryptoTools/Common/BitVector.h>
@@ -51,15 +49,7 @@ public:
     std::vector<WireLabel> receive_ot(const std::vector<bool>& choices,
                                      SocketConnection& connection);
 
-    /**
-     * Advanced libOTe IKNP OT extension methods 
-     * (for when you have proper coproto::Socket bridge)
-     */
-    void perform_iknp_ot_extension_send(const std::vector<std::pair<WireLabel, WireLabel>>& pairs,
-                                        coproto::Socket& socket);
-    
-    std::vector<WireLabel> perform_iknp_ot_extension_receive(const std::vector<bool>& choices,
-                                                            coproto::Socket& socket);
+    // (IKNP extension removed in SimplestOT-only refactor)
 
     /**
      * Utility functions
@@ -75,58 +65,31 @@ private:
     bool initialized;
     bool is_sender;
     size_t total_ots_performed;
-    
-    // libOTe components
-    std::unique_ptr<IknpOtExtSender> ot_sender;
-    std::unique_ptr<IknpOtExtReceiver> ot_receiver;
     std::unique_ptr<PRNG> prng;
-    
-    // Base OT storage
-    std::vector<block> base_recv_msgs;  // For sender (receives in base OT)
-    std::vector<std::array<block, 2>> base_send_msgs;  // For receiver (sends in base OT)
-    BitVector base_choices;  // Sender's choices in base OT
-    
-    bool base_ots_complete;
-    
-    // Internal methods
+
+    // Internal methods / helpers
     void cleanup();
-    void perform_base_ots_as_sender(coproto::Socket& socket);
-    void perform_base_ots_as_receiver(coproto::Socket& socket);
-    
-    // Conversion utilities
     block wire_label_to_block(const WireLabel& label);
     WireLabel block_to_wire_label(const block& blk);
-    
-    // Socket conversion (SocketConnection -> coproto::Socket)
-    coproto::Socket create_coproto_socket(SocketConnection& connection);
+
+    // Endpoint resolution for Asio-based SimplestOT (env GC_OT_ENDPOINT or default 127.0.0.1:9100)
+    std::string resolve_endpoint() const;
+    void simplest_ot_send(size_t n, std::vector<std::array<block,2>>& outPairs, const std::string& endpoint);
+    void simplest_ot_receive(size_t n, const std::vector<bool>& choices, std::vector<block>& outMsgs, const std::string& endpoint);
+    void kdf_mask_labels(const std::vector<std::pair<WireLabel,WireLabel>>& in,
+                         const std::vector<std::array<block,2>>& otBlocks,
+                         std::vector<std::array<WireLabel,2>>& masked) const;
+    void derive_chosen_labels(const std::vector<std::array<WireLabel,2>>& masked,
+                              const std::vector<block>& recvBlocks,
+                              const std::vector<bool>& choices,
+                              std::vector<WireLabel>& out) const;
 };
 
 /**
  * Simplified interface for basic OT operations
  * Handles setup automatically
  */
-class SimpleOT {
-public:
-    /**
-     * One-shot OT operations (handles full setup internally)
-     */
-    static void send_batch_ot(const std::vector<std::pair<WireLabel, WireLabel>>& label_pairs,
-                             SocketConnection& connection);
-    
-    static std::vector<WireLabel> receive_batch_ot(const std::vector<bool>& choices,
-                                                  SocketConnection& connection);
-
-    /**
-     * Individual wire label OT operations
-     */
-    static void send_wire_label_ot(const WireLabel& label0, const WireLabel& label1,
-                                   SocketConnection& connection);
-    
-    static WireLabel receive_wire_label_ot(bool choice, SocketConnection& connection);
-
-private:
-    SimpleOT() = default;  // Static class
-};
+// Removed insecure SimpleOT placeholder. Real OTs are enforced.
 
 /**
  * Exception class for OT-related errors

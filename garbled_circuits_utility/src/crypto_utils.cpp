@@ -86,15 +86,18 @@ WireLabel CryptoUtils::decrypt_label(const std::vector<uint8_t>& ciphertext,
     
     // Decrypt using AES
     auto plaintext = aes_decrypt(ciphertext, dec_key);
-    
-    if (plaintext.size() < WIRE_LABEL_SIZE) {
+    // Correct decryption: label + 16 zero bytes padding 
+    if (plaintext.size() < WIRE_LABEL_SIZE + 16) {
         throw CryptoException("Decryption failed: insufficient data");
     }
-    
-    // Extract wire label
+    // Padding/integrity check: last 16 bytes must be zero (success message).
+    for (size_t i = WIRE_LABEL_SIZE; i < WIRE_LABEL_SIZE + 16; ++i) {
+        if (plaintext[i] != 0x00) {
+            throw CryptoException("Decryption failed: invalid padding");
+        }
+    }
     WireLabel label;
     std::copy(plaintext.begin(), plaintext.begin() + WIRE_LABEL_SIZE, label.begin());
-    
     return label;
 }
 
@@ -103,7 +106,7 @@ bool CryptoUtils::is_valid_decryption(const std::vector<uint8_t>& decrypted_data
         return false;
     }
     
-    // Check padding (last 16 bytes should be zero)
+    // Check padding (last 16 bytes should be zero) (success message).
     for (size_t i = WIRE_LABEL_SIZE; i < WIRE_LABEL_SIZE + 16; ++i) {
         if (decrypted_data[i] != 0x00) {
             return false;

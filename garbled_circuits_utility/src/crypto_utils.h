@@ -42,7 +42,7 @@ public:
     // Compare wire labels for equality
     static bool labels_equal(const WireLabel& a, const WireLabel& b);
     
-    // Convert wire label to hex string (for debugging)
+    // Convert wire label to hex string (for printing)
     static std::string label_to_hex(const WireLabel& label);
     
     // Convert hex string to wire label
@@ -76,15 +76,11 @@ private:
     static bool openssl_initialized;
 };
 
-/**
- * RAII wrapper for managing OpenSSL context
- */
 class OpenSSLContext {
 public:
     OpenSSLContext();
     ~OpenSSLContext();
     
-    // Non-copyable
     OpenSSLContext(const OpenSSLContext&) = delete;
     OpenSSLContext& operator=(const OpenSSLContext&) = delete;
     

@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <chrono>
 #include <set>
+#include <sstream>
 
 // GarbledCircuitManager implementation
 GarbledCircuitManager::GarbledCircuitManager() {
@@ -69,9 +70,30 @@ Circuit GarbledCircuitManager::parse_circuit(const std::string& circuit_descript
 }
 
 void GarbledCircuitManager::parse_circuit_line(const std::string& line, Circuit& circuit) {
-    auto tokens = split_string(line, ' ');
+    // Support inline comments and robust whitespace handling.
+    // Strip anything after a '#'.
+    std::string work = line;
+    auto hashPos = work.find('#');
+    if (hashPos != std::string::npos) {
+        work = work.substr(0, hashPos);
+    }
+    // Trim whitespace.
+    auto first_non = work.find_first_not_of(" \t\r\n");
+    if (first_non == std::string::npos) {
+        return; // empty or comment line
+    }
+    auto last_non = work.find_last_not_of(" \t\r\n");
+    work = work.substr(first_non, last_non - first_non + 1);
+
+    // Tokenize using stringstream to collapse multiple spaces/tabs
+    std::istringstream iss(work);
+    std::vector<std::string> tokens;
+    std::string tok;
+    while (iss >> tok) {
+        tokens.push_back(tok);
+    }
     if (tokens.empty()) return;
-    
+
     std::string command = tokens[0];
     std::transform(command.begin(), command.end(), command.begin(), ::toupper);
     
@@ -813,21 +835,20 @@ WireLabel Evaluator::evaluate_unary_gate(const GarbledGate& garbled_gate,
                                         const WireLabel& input_label,
                                         int gate_id) {
     eval_stats.decryption_attempts++;
-    
-    // For unary gates (like NOT), only first two ciphertexts are valid
-    for (size_t i = 0; i < 2; ++i) {
+
+    // For unary gates we permute the entire 4-entry table (two real, two dummy),
+    // so we must attempt all 4 ciphertexts. Only the correct one should decrypt
+    // successfully (padding check) under (input_label, zero_label) PRF key pair.
+    for (size_t i = 0; i < 4; ++i) {
         try {
             WireLabel result = CryptoUtils::decrypt_label(
                 garbled_gate.ciphertexts[i], input_label, WireLabel{}, gate_id);
-            
             eval_stats.successful_decryptions++;
             return result;
-        } catch (const CryptoException& e) {
-            // Decryption failed, try next ciphertext
-            continue;
+        } catch (const CryptoException&) {
+            continue; // try next ciphertext
         }
     }
-    
     throw EvaluatorException("Failed to decrypt unary gate " + std::to_string(gate_id));
 }
 
@@ -848,7 +869,7 @@ WireLabel Evaluator::try_decrypt_gate(const GarbledGate& garbled_gate,
 WireLabel Evaluator::try_decrypt_unary_gate(const GarbledGate& garbled_gate,
                                            const WireLabel& input,
                                            int gate_id) {
-    for (size_t i = 0; i < 2; ++i) {
+    for (size_t i = 0; i < 4; ++i) {
         try {
             return CryptoUtils::decrypt_label(garbled_gate.ciphertexts[i], input, WireLabel{}, gate_id);
         } catch (...) {

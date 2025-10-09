@@ -204,13 +204,12 @@ private:
                                                 const std::vector<bool>& evaluator_inputs) {
         
         try {
-            // For this simplified implementation, we'll use the simple OT
-            // In a real implementation, this would use libOTe
-            auto labels = SimpleOT::receive_batch_ot(evaluator_inputs, *protocol.connection);
-            
+            OTHandler ot;
+            ot.init_receiver(*protocol.connection);
+            auto labels = ot.receive_ot(evaluator_inputs, *protocol.connection);
             return labels;
         } catch (const std::exception& e) {
-            std::cerr << "OT failed: " << e.what() << std::endl;
+            std::cerr << "OT failed (SimplestOT): " << e.what() << std::endl;
             throw;
         }
     }
