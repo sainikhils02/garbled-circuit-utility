@@ -180,16 +180,21 @@ private:
         auto final_result = garbler.decode_outputs(gc, output_labels);
         
         std::cout << "\n=== PROTOCOL RESULT ===" << std::endl;
-        std::cout << "Circuit Output: ";
-        for (bool bit : final_result) {
-            std::cout << (bit ? '1' : '0');
+        // Show bits MSB->LSB for readability and compute decimal.
+        int decimal_value = 0;
+        for (size_t i = 0; i < final_result.size(); ++i) {
+            if (final_result[i]) decimal_value |= (1 << static_cast<int>(i));
         }
-        std::cout << " (decimal: " << (final_result[0] ? 1 : 0) << ")" << std::endl;
+        std::cout << "Circuit Output (MSB->LSB): ";
+        for (size_t i = final_result.size(); i > 0; --i) {
+            std::cout << (final_result[i - 1] ? '1' : '0');
+        }
+        std::cout << " (decimal: " << decimal_value << ")" << std::endl;
         
         // Show Multi Party Computation summary
-        std::cout << "\n=== COMPUTATION SUMMARY ===" << std::endl;
-        std::cout << "Function computed: Garbler(" << CircuitUtils::bits_to_int(garbler_inputs) 
-                  << ") ⊕ Evaluator(?) = " << (final_result[0] ? 1 : 0) << std::endl;
+    std::cout << "\n=== COMPUTATION SUMMARY ===" << std::endl;
+    std::cout << "Function computed: Garbler(" << CircuitUtils::bits_to_int(garbler_inputs)
+          << ") ⊕ Evaluator(?) = " << decimal_value << std::endl;
         
         protocol.send_goodbye();
     }
