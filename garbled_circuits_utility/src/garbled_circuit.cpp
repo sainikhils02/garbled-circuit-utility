@@ -678,7 +678,6 @@ std::vector<WireLabel> Evaluator::evaluate_circuit(const GarbledCircuit& gc,
                                                   const std::vector<WireLabel>& input_labels) {
     LOG_INFO("Evaluating garbled circuit with " << gc.circuit.gates.size() << " gates");
     
-    auto start_time = std::chrono::high_resolution_clock::now();
     
     wire_values.clear();
     
@@ -697,7 +696,8 @@ std::vector<WireLabel> Evaluator::evaluate_circuit(const GarbledCircuit& gc,
         std::cout << std::dec << std::endl;
     }
     
-    // Evaluate gates 
+    // Evaluate gates
+    auto start_time = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < gc.circuit.gates.size(); ++i) {
         const auto& gate = gc.circuit.gates[i];
         const auto& garbled_gate = gc.garbled_gates[i];
@@ -727,6 +727,7 @@ std::vector<WireLabel> Evaluator::evaluate_circuit(const GarbledCircuit& gc,
         wire_values[gate.output_wire] = result_label;
         eval_stats.gates_evaluated++;
     }
+    auto end_time = std::chrono::high_resolution_clock::now();
     
     std::vector<WireLabel> output_labels;
     output_labels.reserve(gc.circuit.output_wires.size());
@@ -748,7 +749,7 @@ std::vector<WireLabel> Evaluator::evaluate_circuit(const GarbledCircuit& gc,
         std::cout << std::dec << std::endl;
     }
     
-    auto end_time = std::chrono::high_resolution_clock::now();
+    
     eval_stats.total_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     
     LOG_INFO("Circuit evaluation completed in " << eval_stats.total_time.count() << " microseconds");
