@@ -112,7 +112,7 @@ private:
         for (bool bit : evaluator_inputs) {
             std::cout << (bit ? '1' : '0');
         }
-        std::cout << " (decimal: " << CircuitUtils::bits_to_int(evaluator_inputs) << ")" << std::endl;
+    std::cout << " (decimal: " << CircuitUtils::bits_to_int(evaluator_inputs) << ")" << std::endl;
         
         // Step 1: Receive garbled circuit
         std::cout << "\n[STEP 1] Receiving garbled circuit from garbler..." << std::endl;
@@ -147,6 +147,7 @@ private:
         
         auto stats = evaluator.get_evaluation_stats();
         std::cout << "           Successfully evaluated " << stats.gates_evaluated << " gates" << std::endl;
+        std::cout << "           Decrypted " << stats.cipher_decryptions << " ciphers" << std::endl;
         std::cout << "           Evaluation time: " << stats.total_time.count() << " microseconds" << std::endl;
         
         // Step 5: Send result back to garbler

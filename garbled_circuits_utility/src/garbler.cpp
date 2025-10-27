@@ -135,7 +135,7 @@ private:
         for (bool bit : garbler_inputs) {
             std::cout << (bit ? '1' : '0');
         }
-        std::cout << " (decimal: " << CircuitUtils::bits_to_int(garbler_inputs) << ")" << std::endl;
+    std::cout << " (decimal: " << CircuitUtils::bits_to_int(garbler_inputs) << ")" << std::endl;
         
         // Step 1: Send garbled circuit
         std::cout << "\n[STEP 1] Sending garbled circuit to evaluator..." << std::endl;

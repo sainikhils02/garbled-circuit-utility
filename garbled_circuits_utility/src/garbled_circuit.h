@@ -221,6 +221,7 @@ public:
         int gates_evaluated = 0;
         int decryption_attempts = 0;
         int successful_decryptions = 0;
+        int cipher_decryptions = 0;
         std::chrono::microseconds total_time{0};
     };
     

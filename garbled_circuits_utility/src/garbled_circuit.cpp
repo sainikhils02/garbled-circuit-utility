@@ -495,18 +495,18 @@ void Garbler::generate_garbled_table(GarbledGate& garbled_gate,
                                    const WireLabel& in2_label0,
                                    const WireLabel& in2_label1) {
     
-    for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in1_label0[j];
-    std::cout << std::endl;
-    for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in1_label1[j];
-    std::cout << std::endl;
-    for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in2_label0[j];
-    std::cout << std::endl;
-    for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in2_label1[j];
-    std::cout << std::endl;
-    for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)out_label0[j];
-    std::cout << std::endl;
-    for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)out_label1[j];
-    std::cout << std::endl;
+    // for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in1_label0[j];
+    // std::cout << std::endl;
+    // for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in1_label1[j];
+    // std::cout << std::endl;
+    // for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in2_label0[j];
+    // std::cout << std::endl;
+    // for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)in2_label1[j];
+    // std::cout << std::endl;
+    // for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)out_label0[j];
+    // std::cout << std::endl;
+    // for (int j = 0; j < 8; ++j) std::cout << std::hex << (int)out_label1[j];
+    // std::cout << std::endl;
     
     // Generate all 4 ciphertexts for the truth table
     // Entry (a,b): encrypt output_label_for_gate(a,b) with input_labels(a,b)
@@ -536,43 +536,43 @@ void Garbler::generate_garbled_table(GarbledGate& garbled_gate,
     garbled_gate.ciphertexts[3] = ct3;
     
     // Print ciphertexts before permutation
-    std::cout << "[CIPHER DEBUG] Gate " << gate_id << " - Ciphertexts (before permutation):" << std::endl;
-    std::cout << "               CT[0] (0,0)->" << (result_00 ? "1" : "0") << ": ";
-    for (size_t j = 0; j < garbled_gate.ciphertexts[0].size(); ++j) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[0][j];
-    }
-    std::cout << std::dec << std::endl;
+    // std::cout << "[CIPHER DEBUG] Gate " << gate_id << " - Ciphertexts (before permutation):" << std::endl;
+    // std::cout << "               CT[0] (0,0)->" << (result_00 ? "1" : "0") << ": ";
+    // for (size_t j = 0; j < garbled_gate.ciphertexts[0].size(); ++j) {
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[0][j];
+    // }
+    // std::cout << std::dec << std::endl;
     
-    std::cout << "               CT[1] (0,1)->" << (result_01 ? "1" : "0") << ": ";
-    for (size_t j = 0; j < garbled_gate.ciphertexts[1].size(); ++j) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[1][j];
-    }
-    std::cout << std::dec << std::endl;
+    // std::cout << "               CT[1] (0,1)->" << (result_01 ? "1" : "0") << ": ";
+    // for (size_t j = 0; j < garbled_gate.ciphertexts[1].size(); ++j) {
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[1][j];
+    // }
+    // std::cout << std::dec << std::endl;
     
-    std::cout << "               CT[2] (1,0)->" << (result_10 ? "1" : "0") << ": ";
-    for (size_t j = 0; j < garbled_gate.ciphertexts[2].size(); ++j) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[2][j];
-    }
-    std::cout << std::dec << std::endl;
+    // std::cout << "               CT[2] (1,0)->" << (result_10 ? "1" : "0") << ": ";
+    // for (size_t j = 0; j < garbled_gate.ciphertexts[2].size(); ++j) {
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[2][j];
+    // }
+    // std::cout << std::dec << std::endl;
     
-    std::cout << "               CT[3] (1,1)->" << (result_11 ? "1" : "0") << ": ";
-    for (size_t j = 0; j < garbled_gate.ciphertexts[3].size(); ++j) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[3][j];
-    }
-    std::cout << std::dec << std::endl;
+    // std::cout << "               CT[3] (1,1)->" << (result_11 ? "1" : "0") << ": ";
+    // for (size_t j = 0; j < garbled_gate.ciphertexts[3].size(); ++j) {
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[3][j];
+    // }
+    // std::cout << std::dec << std::endl;
     
     // Randomly permute the table to hide the mapping
     permute_garbled_table(garbled_gate);
     
     // Print ciphertexts after permutation
-    std::cout << "[CIPHER DEBUG] Gate " << gate_id << " - Ciphertexts (after permutation, sent to evaluator):" << std::endl;
-    for (int i = 0; i < 4; i++) {
-        std::cout << "               CT[" << i << "]: ";
-        for (size_t j = 0; j < garbled_gate.ciphertexts[i].size(); ++j) {
-            std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[i][j];
-        }
-        std::cout << std::dec << std::endl;
-    }
+    // std::cout << "[CIPHER DEBUG] Gate " << gate_id << " - Ciphertexts (after permutation, sent to evaluator):" << std::endl;
+    // for (int i = 0; i < 4; i++) {
+    //     std::cout << "               CT[" << i << "]: ";
+    //     for (size_t j = 0; j < garbled_gate.ciphertexts[i].size(); ++j) {
+    //         std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[i][j];
+    //     }
+    //     std::cout << std::dec << std::endl;
+    // }
 }
 
 void Garbler::permute_garbled_table(GarbledGate& garbled_gate) {
@@ -777,29 +777,34 @@ WireLabel Evaluator::evaluate_gate(const GarbledGate& garbled_gate,
     std::cout << std::dec << std::endl;
     
     // Try to decrypt each ciphertext in the garbled table
-    std::cout << "[EVAL DEBUG] Gate " << gate_id << " - Attempting to decrypt ciphertexts:" << std::endl;
+    // std::cout << "[EVAL DEBUG] Gate " << gate_id << " - Attempting to decrypt ciphertexts:" << std::endl;
+    int count = 0;
     for (size_t i = 0; i < 4; ++i) {
         try {
-            std::cout << "             Trying CT[" << i << "]: ";
-            for (size_t j = 0; j < garbled_gate.ciphertexts[i].size(); ++j) {
-                std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[i][j];
-            }
-            std::cout << std::dec << std::endl;
+            // std::cout << "             Trying CT[" << i << "]: ";
+            // for (size_t j = 0; j < garbled_gate.ciphertexts[i].size(); ++j) {
+            //     std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)garbled_gate.ciphertexts[i][j];
+            // }
+            // std::cout << std::dec << std::endl;
             
             WireLabel result = CryptoUtils::decrypt_label(
                 garbled_gate.ciphertexts[i], input1_label, input2_label, gate_id);
             
-            std::cout << "             ✓ SUCCESS! Decrypted output label: ";
-            for (int j = 0; j < 8; ++j) {
-                std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)result[j];
-            }
-            std::cout << std::dec << std::endl;
+            //std::cout << "             ✓ SUCCESS! Decrypted output label: ";
+            eval_stats.cipher_decryptions++;
+            std::cout<<"             "<<++count<<" ciphers are decrypted"<<std::endl;
+            // for (int j = 0; j < 8; ++j) {
+            //     std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)result[j];
+            // }
+            // std::cout << std::dec << std::endl;
             
             eval_stats.successful_decryptions++;
             return result;
         } catch (const CryptoException& e) {
             // Decryption failed, try next cipher
-            std::cout << "             ✗ Failed: " << e.what() << std::endl;
+            // std::cout << "             ✗ Failed: " << e.what() << std::endl;
+            eval_stats.cipher_decryptions++;
+            count++;
             continue;
         }
     }
@@ -935,20 +940,18 @@ std::vector<bool> CircuitUtils::generate_random_inputs(size_t num_inputs) {
 std::vector<bool> CircuitUtils::int_to_bits(int value, int bit_width) {
     std::vector<bool> bits;
     bits.reserve(bit_width);
-    
-    for (int i = 0; i < bit_width; ++i) {
-        bits.push_back((value >> i) & 1);
+
+    for (int i = bit_width - 1; i >= 0; --i) {
+        bits.push_back(((value >> i) & 1) != 0);
     }
-    
+
     return bits;
 }
 
 int CircuitUtils::bits_to_int(const std::vector<bool>& bits) {
     int value = 0;
-    for (size_t i = 0; i < bits.size(); ++i) {
-        if (bits[i]) {
-            value |= (1 << i);
-        }
+    for (bool bit : bits) {
+        value = (value << 1) | static_cast<int>(bit);
     }
     return value;
 }
