@@ -1,12 +1,9 @@
-# Half adder circuit
-# Input: 2 bits (A=wire1, B=wire2)
-# Output: 2 bits (Sum=wire3, Carry=wire4)
-# Sum = A XOR B
-# Carry = A AND B
+# Half adder in Bristol fashion
+# Party A contributes bit A (wire 0), Party B contributes bit B (wire 1)
+# Output wires: 2 = Sum, 3 = Carry
 
-INPUTS 2
-OUTPUTS 2
-GATES 2
-
-GATE 3 1 2 XOR
-GATE 4 1 2 AND
+2 4
+1 1
+2
+2 1 0 1 2 XOR
+2 1 0 1 3 AND

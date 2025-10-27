@@ -1,11 +1,9 @@
-# Simplified millionaires problem (2-bit comparison)
-# Input: 4 bits (A1,A0,B1,B0) where A=A1A0, B=B1B0
-# Output: 1 bit (1 if A >= B, 0 otherwise)
-# This is a simplified version that only compares the MSB
+# Simplified millionaires problem (2-bit) in Bristol fashion
+# Inputs: Party A wires 0..1 = A1 A0, Party B wires 2..3 = B1 B0
+# Output wire 5 = 1 when A >= B (MSB comparison only)
 
-INPUTS 4
-OUTPUTS 1
-GATES 2
-
-GATE 5 2 NOT
-GATE 6 1 5 OR
+2 6
+2 2
+1
+1 1 2 4 INV
+2 1 0 4 5 OR

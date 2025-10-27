@@ -1,49 +1,34 @@
-# 4-bit comparison circuit: output 1 iff A >= B
-# Inputs: 8 bits total (A3 A2 A1 A0 B3 B2 B1 B0)
-#   Wires 1..4  : A3 A2 A1 A0 (A3 is MSB)
-#   Wires 5..8  : B3 B2 B1 B0 (B3 is MSB)
-# Output: 1 bit (wire 34) which is 1 if A >= B else 0
-# Method: Compute gt_i = Ai & ~Bi, lt_i = ~Ai & Bi, eq_i = NOT(gt_i OR lt_i) for each bit.
-# Then cascade: result = gt3 OR (eq3 AND (gt2 OR (eq2 AND (gt1 OR (eq1 AND (A0 OR ~B0)))))).
-# Low-level optimization: A0 >= B0 = A0 OR ~B0.
-# Gate types available: AND OR XOR NOT (others unused here).
+# 4-bit comparator (A >= B) in Bristol fashion
+# Party A inputs wires 0..3 = A3 A2 A1 A0
+# Party B inputs wires 4..7 = B3 B2 B1 B0
+# Output wire 33 is 1 when A >= B
 
-INPUTS 8
-OUTPUTS 1
-GATES 26
-
-# --- Bit 3 (MSB) comparison ---
-GATE 9 5 NOT          # w9  = ~B3
-GATE 10 1 9 AND       # w10 = gt3 = A3 & ~B3
-GATE 11 1 NOT         # w11 = ~A3
-GATE 12 11 5 AND      # w12 = lt3 = ~A3 & B3
-GATE 13 10 12 OR      # w13 = diff3 = gt3 | lt3
-GATE 14 13 NOT        # w14 = eq3  = ~(diff3)
-
-# --- Bit 2 comparison ---
-GATE 15 6 NOT         # w15 = ~B2
-GATE 16 2 15 AND      # w16 = gt2 = A2 & ~B2
-GATE 17 2 NOT         # w17 = ~A2
-GATE 18 17 6 AND      # w18 = lt2 = ~A2 & B2
-GATE 19 16 18 OR      # w19 = diff2
-GATE 20 19 NOT        # w20 = eq2
-
-# --- Bit 1 comparison ---
-GATE 21 7 NOT         # w21 = ~B1
-GATE 22 3 21 AND      # w22 = gt1 = A1 & ~B1
-GATE 23 3 NOT         # w23 = ~A1
-GATE 24 23 7 AND      # w24 = lt1
-GATE 25 22 24 OR      # w25 = diff1
-GATE 26 25 NOT        # w26 = eq1
-
-# --- Bit 0 (LSB) base case A0 >= B0 ---
-GATE 27 8 NOT         # w27 = ~B0
-GATE 28 4 27 OR       # w28 = ge0 = A0 OR ~B0
-
-# --- Cascading combination ---
-GATE 29 26 28 AND     # w29 = eq1 & ge0
-GATE 30 22 29 OR      # w30 = ge01 = gt1 | (eq1 & ge0)
-GATE 31 20 30 AND     # w31 = eq2 & ge01
-GATE 32 16 31 OR      # w32 = ge012
-GATE 33 14 32 AND     # w33 = eq3 & ge012
-GATE 34 10 33 OR      # w34 = result = gt3 | (eq3 & ge012)
+26 34
+4 4
+1
+1 1 4 8 INV
+2 1 0 8 9 AND
+1 1 0 10 INV
+2 1 10 4 11 AND
+2 1 9 11 12 OR
+1 1 12 13 INV
+1 1 5 14 INV
+2 1 1 14 15 AND
+1 1 1 16 INV
+2 1 16 5 17 AND
+2 1 15 17 18 OR
+1 1 18 19 INV
+1 1 6 20 INV
+2 1 2 20 21 AND
+1 1 2 22 INV
+2 1 22 6 23 AND
+2 1 21 23 24 OR
+1 1 24 25 INV
+1 1 7 26 INV
+2 1 3 26 27 OR
+2 1 25 27 28 AND
+2 1 21 28 29 OR
+2 1 19 29 30 AND
+2 1 15 30 31 OR
+2 1 13 31 32 AND
+2 1 9 32 33 OR

@@ -87,9 +87,8 @@ public:
 
 private:
     // Helper functions for parsing
-    std::vector<std::string> split_string(const std::string& str, char delimiter);
+    Circuit parse_bristol_stream(std::istream& input);
     std::string trim_string(const std::string& str);
-    void parse_circuit_line(const std::string& line, Circuit& circuit);
     
     // Helper functions for validation
     bool check_wire_consistency(const Circuit& circuit);

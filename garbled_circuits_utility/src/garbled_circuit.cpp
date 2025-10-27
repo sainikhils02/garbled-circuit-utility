@@ -4,9 +4,14 @@
 #include <chrono>
 #include <iostream>
 #include <iomanip>
-#include <chrono>
 #include <set>
 #include <sstream>
+#include <numeric>
+#include <cctype>
+
+namespace FileFormats {
+    void save_bristol_circuit(const Circuit& circuit, const std::string& filename);
+}
 
 GarbledCircuitManager::GarbledCircuitManager() {
 }
@@ -17,131 +22,52 @@ Circuit GarbledCircuitManager::load_circuit_from_file(const std::string& filenam
         throw std::runtime_error("Cannot open circuit file: " + filename);
     }
     
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    file.close();
-    
-    return parse_circuit(buffer.str());
+    return parse_bristol_stream(file);
 }
 
 Circuit GarbledCircuitManager::parse_circuit(const std::string& circuit_description) {
-    Circuit circuit;
-    std::istringstream iss(circuit_description);
-    std::string line;
-    
-    while (std::getline(iss, line)) {
-        line = trim_string(line);
-        if (line.empty() || line[0] == '#') {
-            continue;
-        }
-        
-        parse_circuit_line(line, circuit);
-    }
-    
-    // Determine output wires: gates outputs that are not inputs to other gates
-    if (circuit.output_wires.empty()) {
-        std::set<int> gate_inputs;
-        std::set<int> gate_outputs;
-        
-        // Collect all input and output wires from gates
-        for (const auto& gate : circuit.gates) {
-            gate_outputs.insert(gate.output_wire);
-            gate_inputs.insert(gate.input_wire1);
-            if (gate.type != GateType::NOT) {
-                gate_inputs.insert(gate.input_wire2);
-            }
-        }
-        
-        // Output wires are gate outputs that are not inputs to other gates
-        for (int output_wire : gate_outputs) {
-            if (gate_inputs.find(output_wire) == gate_inputs.end()) {
-                circuit.output_wires.push_back(output_wire);
-            }
-        }
-    }
-
-    // Validate the parsed circuit
-    if (!validate_circuit(circuit)) {
-        throw std::runtime_error("Invalid circuit structure");
-    }
-
-    return circuit;
+    std::istringstream input_stream(circuit_description);
+    return parse_bristol_stream(input_stream);
 }
 
-void GarbledCircuitManager::parse_circuit_line(const std::string& line, Circuit& circuit) {
-    std::string work = line;
-    auto hashPos = work.find('#');
-    if (hashPos != std::string::npos) {
-        work = work.substr(0, hashPos);
-    }
-    auto first_non = work.find_first_not_of(" \t\r\n");
-    if (first_non == std::string::npos) {
-        return;
-    }
-    auto last_non = work.find_last_not_of(" \t\r\n");
-    work = work.substr(first_non, last_non - first_non + 1);
+void GarbledCircuitManager::save_circuit_to_file(const Circuit& circuit, const std::string& filename) {
+    FileFormats::save_bristol_circuit(circuit, filename);
+}
 
-    std::istringstream iss(work);
-    std::vector<std::string> tokens;
-    std::string tok;
-    while (iss >> tok) {
-        tokens.push_back(tok);
-    }
-    if (tokens.empty()) return;
+std::string GarbledCircuitManager::circuit_to_string(const Circuit& circuit) {
+    std::ostringstream out;
+    out << circuit.num_gates << ' ' << circuit.num_wires << '\n';
 
-    std::string command = tokens[0];
-    std::transform(command.begin(), command.end(), command.begin(), ::toupper);
-    
-    if (command == "INPUTS") {
-        if (tokens.size() != 2) {
-            throw std::runtime_error("Invalid INPUTS line format");
-        }
-        circuit.num_inputs = std::stoi(tokens[1]);
-        for (int i = 1; i <= circuit.num_inputs; ++i) {
-            circuit.input_wires.push_back(i);
-        }
-    }
-    else if (command == "OUTPUTS") {
-        if (tokens.size() != 2) {
-            throw std::runtime_error("Invalid OUTPUTS line format");
-        }
-        circuit.num_outputs = std::stoi(tokens[1]);
-    }
-    else if (command == "GATES") {
-        if (tokens.size() != 2) {
-            throw std::runtime_error("Invalid GATES line format");
-        }
-        circuit.num_gates = std::stoi(tokens[1]);
-        circuit.gates.reserve(circuit.num_gates);
-    }
-    else if (command == "GATE") {
-        // Format: GATE output_wire input1_wire input2_wire GATE_TYPE
-        // or: GATE output_wire input1_wire GATE_TYPE (for unary gates)
-        if (tokens.size() < 4) {
-            throw std::runtime_error("Invalid GATE line format");
-        }
-        
-        int output_wire = std::stoi(tokens[1]);
-        int input1_wire = std::stoi(tokens[2]);
-        
-        if (tokens.size() == 4) {
-            // Unary gate
-            GateType type = string_to_gate_type(tokens[3]);
-            circuit.gates.emplace_back(output_wire, input1_wire, type);
-        } else if (tokens.size() == 5) {
-            // Binary gate
-            int input2_wire = std::stoi(tokens[3]);
-            GateType type = string_to_gate_type(tokens[4]);
-            circuit.gates.emplace_back(output_wire, input1_wire, input2_wire, type);
+    auto write_partition = [&out](const std::vector<int>& partition, int fallback) {
+        if (!partition.empty()) {
+            for (size_t i = 0; i < partition.size(); ++i) {
+                if (i != 0) out << ' ';
+                out << partition[i];
+            }
         } else {
-            throw std::runtime_error("Invalid GATE line format");
+            out << fallback;
         }
-        
-        circuit.num_wires = std::max({circuit.num_wires, output_wire, input1_wire});
-        if (tokens.size() == 5) {
-            circuit.num_wires = std::max(circuit.num_wires, std::stoi(tokens[3]));
+        out << '\n';
+    };
+
+    write_partition(circuit.input_partition, circuit.num_inputs);
+    write_partition(circuit.output_partition, circuit.num_outputs);
+
+    for (const auto& gate : circuit.gates) {
+        if (gate.input_wire2 == -1) {
+            out << "1 1 " << gate.input_wire1 << ' '
+                << gate.output_wire << " INV\n";
+        } else {
+            std::string gate_type = gate_type_to_string(gate.type);
+            if (gate.type == GateType::NOT) {
+                gate_type = "INV";
+            }
+            out << "2 1 " << gate.input_wire1 << ' ' << gate.input_wire2 << ' '
+                << gate.output_wire << ' ' << gate_type << '\n';
         }
     }
+
+    return out.str();
 }
 
 bool GarbledCircuitManager::validate_circuit(const Circuit& circuit) {
@@ -157,26 +83,62 @@ bool GarbledCircuitManager::validate_circuit(const Circuit& circuit) {
     if (circuit.input_wires.size() != static_cast<size_t>(circuit.num_inputs)) {
         return false;
     }
+
+    if (!circuit.input_partition.empty()) {
+        int input_sum = std::accumulate(circuit.input_partition.begin(), circuit.input_partition.end(), 0);
+        if (input_sum != circuit.num_inputs) {
+            LOG_ERROR("Input partition does not sum to declared input count");
+            return false;
+        }
+    }
+
+    if (!circuit.output_partition.empty()) {
+        int output_sum = std::accumulate(circuit.output_partition.begin(), circuit.output_partition.end(), 0);
+        if (output_sum != circuit.num_outputs) {
+            LOG_ERROR("Output partition does not sum to declared output count");
+            return false;
+        }
+    }
     
     return check_wire_consistency(circuit) && check_gate_validity(circuit);
 }
 
 bool GarbledCircuitManager::check_wire_consistency(const Circuit& circuit) {
+    for (int wire : circuit.input_wires) {
+        if (wire < 0 || wire >= circuit.num_wires) {
+            LOG_ERROR("Input wire index out of range: " << wire);
+            return false;
+        }
+    }
+
     std::set<int> defined_wires(circuit.input_wires.begin(), circuit.input_wires.end());
     
     for (const auto& gate : circuit.gates) {
+        if (gate.input_wire1 < 0 || gate.input_wire1 >= circuit.num_wires) {
+            LOG_ERROR("Gate uses wire outside declared range: " << gate.input_wire1);
+            return false;
+        }
         if (defined_wires.find(gate.input_wire1) == defined_wires.end()) {
             LOG_ERROR("Gate uses undefined wire: " << gate.input_wire1);
             return false;
         }
         
-        if (gate.input_wire2 != -1 && 
-            defined_wires.find(gate.input_wire2) == defined_wires.end()) {
-            LOG_ERROR("Gate uses undefined wire: " << gate.input_wire2);
-            return false;
+        if (gate.input_wire2 != -1) {
+            if (gate.input_wire2 < 0 || gate.input_wire2 >= circuit.num_wires) {
+                LOG_ERROR("Gate uses wire outside declared range: " << gate.input_wire2);
+                return false;
+            }
+            if (defined_wires.find(gate.input_wire2) == defined_wires.end()) {
+                LOG_ERROR("Gate uses undefined wire: " << gate.input_wire2);
+                return false;
+            }
         }
         
         // Add output wire to defined wires
+        if (gate.output_wire < 0 || gate.output_wire >= circuit.num_wires) {
+            LOG_ERROR("Gate output wire outside declared range: " << gate.output_wire);
+            return false;
+        }
         defined_wires.insert(gate.output_wire);
     }
     
@@ -205,27 +167,215 @@ bool GarbledCircuitManager::check_gate_validity(const Circuit& circuit) {
     return true;
 }
 
-std::vector<std::string> GarbledCircuitManager::split_string(const std::string& str, char delimiter) {
-    std::vector<std::string> tokens;
-    std::stringstream ss(str);
-    std::string token;
-    
-    while (std::getline(ss, token, delimiter)) {
-        token = trim_string(token);
-        if (!token.empty()) {
-            tokens.push_back(token);
-        }
-    }
-    
-    return tokens;
-}
-
 std::string GarbledCircuitManager::trim_string(const std::string& str) {
     size_t start = str.find_first_not_of(" \t\n\r");
     if (start == std::string::npos) return "";
     
     size_t end = str.find_last_not_of(" \t\n\r");
     return str.substr(start, end - start + 1);
+}
+
+Circuit GarbledCircuitManager::parse_bristol_stream(std::istream& input) {
+    auto next_content_line = [&](std::istream& in) -> std::string {
+        std::string line;
+        while (std::getline(in, line)) {
+            std::string trimmed = trim_string(line);
+            if (trimmed.empty() || trimmed[0] == '#') {
+                continue;
+            }
+            auto comment_pos = trimmed.find('#');
+            if (comment_pos != std::string::npos) {
+                trimmed = trim_string(trimmed.substr(0, comment_pos));
+                if (trimmed.empty()) {
+                    continue;
+                }
+            }
+            return trimmed;
+        }
+        return {};
+    };
+
+    Circuit circuit;
+
+    std::string header_line = next_content_line(input);
+    if (header_line.empty()) {
+        throw std::runtime_error("Bristol circuit is missing header line");
+    }
+
+    {
+        std::istringstream header_stream(header_line);
+        if (!(header_stream >> circuit.num_gates >> circuit.num_wires)) {
+            throw std::runtime_error("Invalid Bristol header line: expected 'gates wires'");
+        }
+        if (circuit.num_gates <= 0 || circuit.num_wires <= 0) {
+            throw std::runtime_error("Bristol header must specify positive gate and wire counts");
+        }
+    }
+
+    std::string inputs_line = next_content_line(input);
+    if (inputs_line.empty()) {
+        throw std::runtime_error("Bristol circuit missing inputs line");
+    }
+
+    std::vector<int> input_counts;
+    {
+        std::istringstream inputs_stream(inputs_line);
+        int count = 0;
+        while (inputs_stream >> count) {
+            if (count < 0) {
+                throw std::runtime_error("Bristol inputs line contains negative count");
+            }
+            input_counts.push_back(count);
+        }
+    }
+
+    if (input_counts.empty()) {
+        throw std::runtime_error("Bristol inputs line must contain at least one integer");
+    }
+
+    int total_inputs = std::accumulate(input_counts.begin(), input_counts.end(), 0);
+    if (total_inputs <= 0) {
+        throw std::runtime_error("Bristol circuit must declare at least one input");
+    }
+    if (total_inputs > circuit.num_wires) {
+        throw std::runtime_error("Total inputs exceed declared wire count in Bristol circuit");
+    }
+
+    circuit.num_inputs = total_inputs;
+    circuit.input_wires.clear();
+    circuit.input_wires.reserve(total_inputs);
+    circuit.input_partition = input_counts;
+
+    int next_wire = 0;
+    for (int count : input_counts) {
+        for (int i = 0; i < count; ++i) {
+            circuit.input_wires.push_back(next_wire++);
+        }
+    }
+
+    std::string outputs_line = next_content_line(input);
+    if (outputs_line.empty()) {
+        throw std::runtime_error("Bristol circuit missing outputs line");
+    }
+
+    std::vector<int> output_counts;
+    {
+        std::istringstream outputs_stream(outputs_line);
+        int count = 0;
+        while (outputs_stream >> count) {
+            if (count < 0) {
+                throw std::runtime_error("Bristol outputs line contains negative count");
+            }
+            output_counts.push_back(count);
+        }
+    }
+
+    if (output_counts.empty()) {
+        throw std::runtime_error("Bristol outputs line must contain at least one integer");
+    }
+
+    int total_outputs = std::accumulate(output_counts.begin(), output_counts.end(), 0);
+    if (total_outputs <= 0) {
+        throw std::runtime_error("Bristol circuit must declare at least one output");
+    }
+    if (total_outputs > circuit.num_wires) {
+        throw std::runtime_error("Total outputs exceed declared wire count in Bristol circuit");
+    }
+
+    circuit.num_outputs = total_outputs;
+    circuit.output_wires.clear();
+    circuit.output_wires.reserve(total_outputs);
+    circuit.output_partition = output_counts;
+    for (int wire = circuit.num_wires - total_outputs; wire < circuit.num_wires; ++wire) {
+        circuit.output_wires.push_back(wire);
+    }
+
+    circuit.gates.clear();
+    circuit.gates.reserve(circuit.num_gates);
+
+    auto normalize_gate_token = [](std::string token) {
+        std::transform(token.begin(), token.end(), token.begin(), [](unsigned char c) {
+            return static_cast<char>(std::toupper(c));
+        });
+        if (token == "INV") {
+            return std::string("NOT");
+        }
+        return token;
+    };
+
+    for (int gate_index = 0; gate_index < circuit.num_gates; ++gate_index) {
+        std::string gate_line = next_content_line(input);
+        if (gate_line.empty()) {
+            throw std::runtime_error("Unexpected end of file while reading Bristol gates");
+        }
+
+        std::istringstream gate_stream(gate_line);
+        int input_count = 0;
+        int output_count = 0;
+        if (!(gate_stream >> input_count >> output_count)) {
+            throw std::runtime_error("Malformed Bristol gate line: missing arity");
+        }
+        if (input_count <= 0 || output_count <= 0) {
+            throw std::runtime_error("Bristol gate must have positive input/output counts");
+        }
+
+        std::vector<int> gate_inputs(input_count);
+        for (int i = 0; i < input_count; ++i) {
+            if (!(gate_stream >> gate_inputs[i])) {
+                throw std::runtime_error("Malformed Bristol gate line: missing input wire index");
+            }
+        }
+
+        std::vector<int> gate_outputs(output_count);
+        for (int i = 0; i < output_count; ++i) {
+            if (!(gate_stream >> gate_outputs[i])) {
+                throw std::runtime_error("Malformed Bristol gate line: missing output wire index");
+            }
+        }
+
+        std::string gate_type_token;
+        if (!(gate_stream >> gate_type_token)) {
+            throw std::runtime_error("Malformed Bristol gate line: missing gate type");
+        }
+
+        std::string gate_type_str = normalize_gate_token(gate_type_token);
+        GateType gate_type = string_to_gate_type(gate_type_str);
+
+        if (gate_outputs.size() != 1) {
+            throw std::runtime_error("Only single-output gates are supported in this implementation");
+        }
+
+        int out_wire = gate_outputs[0];
+        if (out_wire < 0 || out_wire >= circuit.num_wires) {
+            throw std::runtime_error("Gate output wire index out of range in Bristol circuit");
+        }
+
+        if (input_count == 1) {
+            int in_wire = gate_inputs[0];
+            if (in_wire < 0 || in_wire >= circuit.num_wires) {
+                throw std::runtime_error("Gate input wire index out of range in Bristol circuit");
+            }
+            circuit.gates.emplace_back(out_wire, in_wire, gate_type);
+        } else if (input_count == 2) {
+            int in_wire1 = gate_inputs[0];
+            int in_wire2 = gate_inputs[1];
+            if (in_wire1 < 0 || in_wire1 >= circuit.num_wires ||
+                in_wire2 < 0 || in_wire2 >= circuit.num_wires) {
+                throw std::runtime_error("Gate input wire index out of range in Bristol circuit");
+            }
+            circuit.gates.emplace_back(out_wire, in_wire1, in_wire2, gate_type);
+        } else {
+            throw std::runtime_error("Only unary or binary gates are supported in this implementation");
+        }
+    }
+
+    circuit.num_gates = static_cast<int>(circuit.gates.size());
+
+    if (!validate_circuit(circuit)) {
+        throw std::runtime_error("Parsed Bristol circuit failed validation");
+    }
+
+    return circuit;
 }
 
 Circuit GarbledCircuitManager::create_and_gate_circuit() {
@@ -235,11 +385,14 @@ Circuit GarbledCircuitManager::create_and_gate_circuit() {
     circuit.num_gates = 1;
     circuit.num_wires = 3;
     
-    circuit.input_wires = {1, 2};
-    circuit.output_wires = {3};
+    circuit.input_wires = {0, 1};
+    circuit.output_wires = {2};
+    circuit.input_partition = {1, 1};
+    circuit.output_partition = {1};
     
-    // AND gate: output wire 3, inputs wires 1 and 2
-    circuit.gates.emplace_back(3, 1, 2, GateType::AND);
+    // AND gate: output wire 2, input wires 0 and 1
+    circuit.gates.emplace_back(2, 0, 1, GateType::AND);
+    circuit.num_gates = static_cast<int>(circuit.gates.size());
     
     return circuit;
 }
@@ -251,11 +404,14 @@ Circuit GarbledCircuitManager::create_or_gate_circuit() {
     circuit.num_gates = 1;
     circuit.num_wires = 3;
     
-    circuit.input_wires = {1, 2};
-    circuit.output_wires = {3};
+    circuit.input_wires = {0, 1};
+    circuit.output_wires = {2};
+    circuit.input_partition = {1, 1};
+    circuit.output_partition = {1};
     
-    // OR gate: output wire 3, inputs wires 1 and 2
-    circuit.gates.emplace_back(3, 1, 2, GateType::OR);
+    // OR gate: output wire 2, input wires 0 and 1
+    circuit.gates.emplace_back(2, 0, 1, GateType::OR);
+    circuit.num_gates = static_cast<int>(circuit.gates.size());
     
     return circuit;
 }
@@ -267,11 +423,14 @@ Circuit GarbledCircuitManager::create_xor_gate_circuit() {
     circuit.num_gates = 1;
     circuit.num_wires = 3;
     
-    circuit.input_wires = {1, 2};
-    circuit.output_wires = {3};
+    circuit.input_wires = {0, 1};
+    circuit.output_wires = {2};
+    circuit.input_partition = {1, 1};
+    circuit.output_partition = {1};
     
-    // XOR gate: output wire 3, inputs wires 1 and 2
-    circuit.gates.emplace_back(3, 1, 2, GateType::XOR);
+    // XOR gate: output wire 2, input wires 0 and 1
+    circuit.gates.emplace_back(2, 0, 1, GateType::XOR);
+    circuit.num_gates = static_cast<int>(circuit.gates.size());
     
     return circuit;
 }
@@ -283,24 +442,21 @@ Circuit GarbledCircuitManager::create_comparison_circuit(int bit_width) {
     circuit.num_inputs = 2 * bit_width;
     circuit.num_outputs = 1;
     circuit.num_gates = 0; // Will be calculated
+    circuit.input_partition = {bit_width, bit_width};
+    circuit.output_partition = {1};
     
-    int wire_counter = 2 * bit_width + 1; // Start after input wires
+    int wire_counter = 2 * bit_width; // Start after input wires
     
-    // Input wires: 1 to bit_width (first number), bit_width+1 to 2*bit_width (second number)
-    for (int i = 1; i <= 2 * bit_width; ++i) {
+    // Input wires: 0..bit_width-1 (first number), bit_width..(2*bit_width-1) (second number)
+    for (int i = 0; i < 2 * bit_width; ++i) {
         circuit.input_wires.push_back(i);
     }
     
-    // Build comparison logic bit by bit (simplified)
-    // This is a basic implementation - in practice you'd want a more sophisticated comparator
-    
-    int carry_wire = wire_counter++;
-    // Initialize carry to 1 (for >= comparison)
-    // This would need additional logic gates
-    
+    // Build comparison logic bit by bit (simplified placeholder comparator)
+    int carry_wire = -1;
     for (int i = 0; i < bit_width; ++i) {
-        int a_wire = i + 1;
-        int b_wire = bit_width + i + 1;
+        int a_wire = i;
+        int b_wire = bit_width + i;
         
         // XOR for difference
         int diff_wire = wire_counter++;
@@ -313,9 +469,13 @@ Circuit GarbledCircuitManager::create_comparison_circuit(int bit_width) {
         carry_wire = new_carry;
     }
     
+    if (carry_wire == -1) {
+        carry_wire = 0;
+    }
+    
     circuit.output_wires = {carry_wire};
-    circuit.num_gates = circuit.gates.size();
-    circuit.num_wires = wire_counter - 1;
+    circuit.num_gates = static_cast<int>(circuit.gates.size());
+    circuit.num_wires = wire_counter;
     
     return circuit;
 }
@@ -1025,43 +1185,61 @@ void CircuitUtils::print_inputs_outputs(const std::vector<bool>& inputs,
 
 namespace FileFormats {
     
-    Circuit load_simple_circuit(const std::string& filename) {
+    Circuit load_bristol_circuit(const std::string& filename) {
         GarbledCircuitManager manager;
         return manager.load_circuit_from_file(filename);
     }
-    
-    void save_simple_circuit(const Circuit& circuit, const std::string& filename) {
+
+    Circuit load_simple_circuit(const std::string& filename) {
+        // Legacy helper: delegate to Bristol parser
+        return load_bristol_circuit(filename);
+    }
+
+    void save_bristol_circuit(const Circuit& circuit, const std::string& filename) {
         std::ofstream file(filename);
         if (!file.is_open()) {
             throw std::runtime_error("Cannot open file for writing: " + filename);
         }
-        
-        file << "# Simple circuit format" << std::endl;
-        file << "INPUTS " << circuit.num_inputs << std::endl;
-        file << "OUTPUTS " << circuit.num_outputs << std::endl;
-        file << "GATES " << circuit.num_gates << std::endl;
-        file << std::endl;
-        
-        for (const auto& gate : circuit.gates) {
-            file << "GATE " << gate.output_wire << " " << gate.input_wire1;
-            if (gate.input_wire2 != -1) {
-                file << " " << gate.input_wire2;
+
+        file << circuit.num_gates << " " << circuit.num_wires << std::endl;
+
+        if (!circuit.input_partition.empty()) {
+            for (size_t i = 0; i < circuit.input_partition.size(); ++i) {
+                if (i != 0) file << ' ';
+                file << circuit.input_partition[i];
             }
-            file << " " << gate_type_to_string(gate.type) << std::endl;
+        } else {
+            file << circuit.num_inputs;
         }
-        
-        file.close();
+        file << std::endl;
+
+        if (!circuit.output_partition.empty()) {
+            for (size_t i = 0; i < circuit.output_partition.size(); ++i) {
+                if (i != 0) file << ' ';
+                file << circuit.output_partition[i];
+            }
+        } else {
+            file << circuit.num_outputs;
+        }
+        file << std::endl;
+
+        for (const auto& gate : circuit.gates) {
+            if (gate.input_wire2 == -1) {
+                file << "1 1 " << gate.input_wire1 << " " << gate.output_wire << " INV" << std::endl;
+            } else {
+                std::string gate_type = gate_type_to_string(gate.type);
+                if (gate.type == GateType::NOT) {
+                    gate_type = "INV";
+                }
+                file << "2 1 " << gate.input_wire1 << " " << gate.input_wire2 << " "
+                     << gate.output_wire << " " << gate_type << std::endl;
+            }
+        }
     }
-    
-    Circuit load_bristol_circuit(const std::string& filename) {
-        // Bristol format is more complex - this is a simplified implementation
-        // Real Bristol format has specific syntax requirements
-        return load_simple_circuit(filename);
-    }
-    
-    void save_bristol_circuit(const Circuit& circuit, const std::string& filename) {
-        // Bristol format implementation would go here
-        save_simple_circuit(circuit, filename);
+
+    void save_simple_circuit(const Circuit& circuit, const std::string& filename) {
+        // Legacy helper: write Bristol fashion
+        save_bristol_circuit(circuit, filename);
     }
     
     Circuit load_binary_circuit(const std::string& filename) {

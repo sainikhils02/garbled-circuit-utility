@@ -56,6 +56,8 @@ struct Circuit {
     std::vector<Gate> gates;
     std::vector<int> input_wires;
     std::vector<int> output_wires;
+    std::vector<int> input_partition;
+    std::vector<int> output_partition;
     
     Circuit() : num_inputs(0), num_outputs(0), num_gates(0), num_wires(0) {}
 };
@@ -127,6 +129,7 @@ inline GateType string_to_gate_type(const std::string& str) {
     if (str == "XOR") return GateType::XOR; 
     if (str == "NAND") return GateType::NAND;
     if (str == "NOR") return GateType::NOR;
+    if (str == "INV") return GateType::NOT;
     if (str == "NOT") return GateType::NOT;
     if (str == "INPUT") return GateType::INPUT;
     if (str == "OUTPUT") return GateType::OUTPUT;

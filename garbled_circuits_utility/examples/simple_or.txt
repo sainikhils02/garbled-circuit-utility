@@ -1,10 +1,8 @@
-# Simple OR gate circuit
-# Input: 2 bits (wire 1, wire 2)
-# Output: 1 bit (wire 3)
-# Function: wire3 = wire1 OR wire2
+# Simple OR gate in Bristol fashion
+# Party A supplies wire 0, Party B supplies wire 1
+# Output wire 2 = wire0 OR wire1
 
-INPUTS 2
-OUTPUTS 1
-GATES 1
-
-GATE 3 1 2 OR
+1 3
+1 1
+1
+2 1 0 1 2 OR

@@ -153,6 +153,30 @@ private:
         }
         std::cout << " (decimal: " << CircuitUtils::bits_to_int(garbler_inputs) << ")" << std::endl;
         if (use_pandp) std::cout << "Point-and-Permute: ENABLED" << std::endl;
+
+        size_t expected_garbler_inputs = garbler_inputs.size();
+        size_t expected_evaluator_inputs = 0;
+        if (!gc.circuit.input_partition.empty()) {
+            expected_garbler_inputs = static_cast<size_t>(gc.circuit.input_partition.front());
+            expected_evaluator_inputs = 0;
+            for (size_t idx = 1; idx < gc.circuit.input_partition.size(); ++idx) {
+                expected_evaluator_inputs += static_cast<size_t>(gc.circuit.input_partition[idx]);
+            }
+        } else {
+            if (gc.circuit.num_inputs < static_cast<int>(expected_garbler_inputs)) {
+                throw std::invalid_argument("Circuit declares fewer input wires than bits provided by garbler");
+            }
+            expected_evaluator_inputs = static_cast<size_t>(gc.circuit.num_inputs) - expected_garbler_inputs;
+        }
+
+        if (static_cast<size_t>(gc.circuit.num_inputs) != expected_garbler_inputs + expected_evaluator_inputs) {
+            throw std::invalid_argument("Circuit input partition does not match declared input count");
+        }
+
+        if (garbler_inputs.size() != expected_garbler_inputs) {
+            throw std::invalid_argument("Garbler provided " + std::to_string(garbler_inputs.size()) +
+                                         " bits but circuit expects " + std::to_string(expected_garbler_inputs));
+        }
         
         // Step 1: Send garbled circuit
     std::cout << "\n[STEP 1] Sending garbled circuit to evaluator..." << std::endl;
@@ -165,7 +189,8 @@ private:
         
         // Step 2: Send garbler's input labels
         std::vector<int> garbler_wire_indices;
-        for (size_t i = 0; i < garbler_inputs.size(); ++i) {
+        garbler_wire_indices.reserve(expected_garbler_inputs);
+        for (size_t i = 0; i < expected_garbler_inputs; ++i) {
             garbler_wire_indices.push_back(gc.circuit.input_wires[i]);
         }
         
@@ -182,7 +207,7 @@ private:
         }
         
         // Step 3: Perform OT for evaluator's inputs
-        size_t evaluator_input_count = gc.circuit.num_inputs - garbler_inputs.size();
+    size_t evaluator_input_count = expected_evaluator_inputs;
         if (evaluator_input_count > 0) {
             std::cout << "[STEP 3] Performing OT for evaluator's " << evaluator_input_count << " inputs..." << std::endl;
             auto ot0 = std::chrono::high_resolution_clock::now();

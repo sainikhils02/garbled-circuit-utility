@@ -7,7 +7,6 @@ A simple C++ implementation of Yao's Garbled Circuits protocol for secure two‑
 - Basic implementation of Yao's Garbled Circuits
 - Socket-based communication between garbler and evaluator
 - Oblivious Transfer via libOTe SimplestOT using coproto (Boost.Asio)
-- Text netlist parser with inline comments
 - Supported gates: AND, OR, XOR, NAND, NOT 
 - Example circuits (AND gate, 4‑bit Millionaire’s simplified comparator)
 
@@ -169,25 +168,32 @@ Evaluator:
 - `--port <port>`: Port to connect to (default: 8080)
 - `--input <bits>`: Evaluator’s input bits
 
-### Circuit format (text)
+### Circuit format (Bristol fashion)
 
-Circuits are defined in a simple text format:
+Circuits use the standard Bristol Fashion text format:
 
 ```
-# Comments start with '#', inline comments are supported
+# Comments start with '#'
 
-INPUTS N         # Number of input wires (wires 1..N)
-OUTPUTS M        # Number of output wires (count)
-GATES K          # Number of gates
+<gate_count> <wire_count>
+<inputs_party0> [inputs_party1 ...]
+<outputs_party0> [outputs_party1 ...]
 
-# Binary gate:  GATE <out> <in1> <in2> <TYPE>
-# Unary gate:   GATE <out> <in> <TYPE>
-# Supported TYPE: AND, OR, XOR, NAND, NOT
-
-GATE 3 1 2 AND   # example
+<in_arity> <out_arity> <in wires...> <out wires...> <GATE>
 ```
 
-Output wires are inferred as gate outputs that are not consumed as any gate’s input. Ensure your circuit graph is acyclic and that exactly M such outputs exist.
+- Wires are zero-indexed and must be within `[0, wire_count)`. The input lines assign wires to each party in order (party 0 first).
+- Supported gate tokens: `AND`, `OR`, `XOR`, `NAND`, `NOR`, and `INV` (logical NOT). Only unary and binary gates are currently accepted.
+- The final `<sum(outputs)>` wires (highest indices) are interpreted as circuit outputs.
+
+Example – one AND gate where each party supplies one bit:
+
+```
+1 3
+1 1
+1
+2 1 0 1 2 AND
+```
 
 ## Examples
 
@@ -297,8 +303,4 @@ Common issues:
 - Set the same `GC_OT_ENDPOINT` on both sides (default 127.0.0.1:9100).
 - Ensure the port is free and both processes can connect.
 
-4) Invalid circuit structure
-- Check `GATES` count matches the number of GATE lines.
-- Ensure wires are correctly referenced and the graph is acyclic.
-- Confirm exactly `OUTPUTS` many gate outputs are unconsumed by any gate inputs.
 

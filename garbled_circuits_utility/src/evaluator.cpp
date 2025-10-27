@@ -120,21 +120,45 @@ private:
         for (bool bit : evaluator_inputs) {
             std::cout << (bit ? '1' : '0');
         }
-    std::cout << " (decimal: " << CircuitUtils::bits_to_int(evaluator_inputs) << ")" << std::endl;
+        std::cout << " (decimal: " << CircuitUtils::bits_to_int(evaluator_inputs) << ")" << std::endl;
         
         // Step 1: Receive garbled circuit
         std::cout << "\n[STEP 1] Receiving garbled circuit from garbler..." << std::endl;
-        
-    auto rc0 = std::chrono::high_resolution_clock::now();
-    auto garbled_circuit = protocol.receive_circuit();
-    auto rc1 = std::chrono::high_resolution_clock::now();
-    std::cout << "           Received circuit in "
-          << std::chrono::duration_cast<std::chrono::milliseconds>(rc1 - rc0).count()
-          << " ms" << std::endl;
+        auto rc0 = std::chrono::high_resolution_clock::now();
+        auto garbled_circuit = protocol.receive_circuit();
+        auto rc1 = std::chrono::high_resolution_clock::now();
+        std::cout << "           Received circuit in "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(rc1 - rc0).count()
+                  << " ms" << std::endl;
+
+        size_t expected_garbler_inputs = 0;
+        size_t expected_evaluator_inputs = evaluator_inputs.size();
+        if (!garbled_circuit.circuit.input_partition.empty()) {
+            expected_garbler_inputs = static_cast<size_t>(garbled_circuit.circuit.input_partition.front());
+            expected_evaluator_inputs = 0;
+            for (size_t idx = 1; idx < garbled_circuit.circuit.input_partition.size(); ++idx) {
+                expected_evaluator_inputs += static_cast<size_t>(garbled_circuit.circuit.input_partition[idx]);
+            }
+        } else {
+            if (garbled_circuit.circuit.num_inputs < static_cast<int>(evaluator_inputs.size())) {
+                throw std::invalid_argument("Circuit declares fewer input wires than bits provided by evaluator");
+            }
+            expected_garbler_inputs = static_cast<size_t>(garbled_circuit.circuit.num_inputs) - evaluator_inputs.size();
+        }
+
+        if (static_cast<size_t>(garbled_circuit.circuit.num_inputs) != expected_garbler_inputs + expected_evaluator_inputs) {
+            throw std::invalid_argument("Circuit input partition does not match declared input count");
+        }
+
+        if (evaluator_inputs.size() != expected_evaluator_inputs) {
+            throw std::invalid_argument("Evaluator provided " + std::to_string(evaluator_inputs.size()) +
+                                         " bits but circuit expects " + std::to_string(expected_evaluator_inputs));
+        }
         
         // Step 2: Receive garbler's input labels
-        std::vector<WireLabel> all_input_labels;
-        size_t garbler_input_count = garbled_circuit.circuit.num_inputs - evaluator_inputs.size();
+    std::vector<WireLabel> all_input_labels;
+    all_input_labels.reserve(garbled_circuit.circuit.input_wires.size());
+        size_t garbler_input_count = expected_garbler_inputs;
         
         if (garbler_input_count > 0) {
             std::cout << "[STEP 2] Receiving garbler's input labels..." << std::endl;
