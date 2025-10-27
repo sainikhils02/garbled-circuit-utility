@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <getopt.h>
+#include <chrono>
 
 /**
  * Responsibilities:
@@ -24,15 +25,23 @@ public:
                 return 1;
             }
                         
+            auto t0 = std::chrono::high_resolution_clock::now();
             // Load circuit
             auto circuit = load_circuit();
+            auto t1 = std::chrono::high_resolution_clock::now();
+            auto load_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+            std::cout << "[TIME] Loaded circuit in " << load_ms << " ms" << std::endl;
             
             // Parse garbler inputs
             auto garbler_inputs = parse_inputs();
             
             // Garble circuit
-            Garbler garbler;
+            auto tg0 = std::chrono::high_resolution_clock::now();
+            Garbler garbler(use_pandp);
             auto garbled_circuit = garbler.garble_circuit(circuit);
+            auto tg1 = std::chrono::high_resolution_clock::now();
+            auto garble_ms = std::chrono::duration_cast<std::chrono::milliseconds>(tg1 - tg0).count();
+            std::cout << "[TIME] Garbled circuit in " << garble_ms << " ms" << std::endl;
             
             // Set up network connection
             auto connection = std::make_unique<SocketConnection>(port);
@@ -56,6 +65,7 @@ private:
     std::string circuit_file;
     std::string input_string;
     int port;
+    bool use_pandp = false;
     
     
     bool parse_arguments(int argc, char* argv[]) {
@@ -63,6 +73,7 @@ private:
             {"port", required_argument, 0, 'p'},
             {"circuit", required_argument, 0, 'c'},
             {"input", required_argument, 0, 'i'},
+            {"pandp", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
         
@@ -79,6 +90,11 @@ private:
                     break;
                 case 'i':
                     input_string = optarg;
+                    break;
+                case 0:
+                    if (std::string(long_options[option_index].name) == "pandp") {
+                        use_pandp = true;
+                    }
                     break;
                 default:
                     return false;
@@ -135,11 +151,17 @@ private:
         for (bool bit : garbler_inputs) {
             std::cout << (bit ? '1' : '0');
         }
-    std::cout << " (decimal: " << CircuitUtils::bits_to_int(garbler_inputs) << ")" << std::endl;
+        std::cout << " (decimal: " << CircuitUtils::bits_to_int(garbler_inputs) << ")" << std::endl;
+        if (use_pandp) std::cout << "Point-and-Permute: ENABLED" << std::endl;
         
         // Step 1: Send garbled circuit
-        std::cout << "\n[STEP 1] Sending garbled circuit to evaluator..." << std::endl;
-        protocol.send_circuit(gc);
+    std::cout << "\n[STEP 1] Sending garbled circuit to evaluator..." << std::endl;
+    auto s0 = std::chrono::high_resolution_clock::now();
+    protocol.send_circuit(gc);
+    auto s1 = std::chrono::high_resolution_clock::now();
+    std::cout << "           Done in "
+          << std::chrono::duration_cast<std::chrono::milliseconds>(s1 - s0).count()
+          << " ms" << std::endl;
         
         // Step 2: Send garbler's input labels
         std::vector<int> garbler_wire_indices;
@@ -149,8 +171,13 @@ private:
         
         if (!garbler_inputs.empty()) {
             std::cout << "[STEP 2] Sending garbler's input labels..." << std::endl;
+            auto s2 = std::chrono::high_resolution_clock::now();
             auto garbler_labels = garbler.encode_inputs(gc, garbler_inputs, garbler_wire_indices);
             protocol.send_input_labels(garbler_labels);
+            auto s3 = std::chrono::high_resolution_clock::now();
+            std::cout << "           Sent in "
+                      << std::chrono::duration_cast<std::chrono::milliseconds>(s3 - s2).count()
+                      << " ms" << std::endl;
             std::cout << "           Sent " << garbler_labels.size() << " wire labels for garbler's inputs" << std::endl;
         }
         
@@ -158,13 +185,23 @@ private:
         size_t evaluator_input_count = gc.circuit.num_inputs - garbler_inputs.size();
         if (evaluator_input_count > 0) {
             std::cout << "[STEP 3] Performing OT for evaluator's " << evaluator_input_count << " inputs..." << std::endl;
+            auto ot0 = std::chrono::high_resolution_clock::now();
             perform_ot_for_evaluator(protocol, gc, garbler, evaluator_input_count);
+            auto ot1 = std::chrono::high_resolution_clock::now();
+            std::cout << "           OT completed in "
+                      << std::chrono::duration_cast<std::chrono::milliseconds>(ot1 - ot0).count()
+                      << " ms" << std::endl;
         }
         
         // Step 4: Receive result
         std::cout << "[STEP 4] Waiting for evaluation result..." << std::endl;
         
-        auto result_data = protocol.receive_result();
+    auto r0 = std::chrono::high_resolution_clock::now();
+    auto result_data = protocol.receive_result();
+    auto r1 = std::chrono::high_resolution_clock::now();
+    std::cout << "           Received in "
+          << std::chrono::duration_cast<std::chrono::milliseconds>(r1 - r0).count()
+          << " ms" << std::endl;
         
         // The result should contain the output wire labels
         std::vector<WireLabel> output_labels;
@@ -177,7 +214,12 @@ private:
         }
         
         // Decode the final result
-        auto final_result = garbler.decode_outputs(gc, output_labels);
+    auto d0 = std::chrono::high_resolution_clock::now();
+    auto final_result = garbler.decode_outputs(gc, output_labels);
+    auto d1 = std::chrono::high_resolution_clock::now();
+    std::cout << "[TIME] Decoded outputs in "
+          << std::chrono::duration_cast<std::chrono::milliseconds>(d1 - d0).count()
+          << " ms" << std::endl;
         
         std::cout << "\n=== PROTOCOL RESULT ===" << std::endl;
         // Show bits MSB->LSB for readability and compute decimal.
@@ -185,7 +227,7 @@ private:
         for (size_t i = 0; i < final_result.size(); ++i) {
             if (final_result[i]) decimal_value |= (1 << static_cast<int>(i));
         }
-        std::cout << "Circuit Output (MSB->LSB): ";
+        std::cout << "Circuit Output: ";
         for (size_t i = final_result.size(); i > 0; --i) {
             std::cout << (final_result[i - 1] ? '1' : '0');
         }

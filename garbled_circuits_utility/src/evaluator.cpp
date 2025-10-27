@@ -4,6 +4,7 @@
 #include "ot_handler.h"
 #include <iostream>
 #include <getopt.h>
+#include <chrono>
 
 /**
  * Responsibilities:
@@ -46,6 +47,7 @@ private:
     std::string hostname;
     std::string input_string;
     int port;
+    bool use_pandp = false;
     
     
     bool parse_arguments(int argc, char* argv[]) {
@@ -53,6 +55,7 @@ private:
             {"host", required_argument, 0, 'H'},
             {"port", required_argument, 0, 'p'},
             {"input", required_argument, 0, 'i'},
+            {"pandp", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
         
@@ -69,6 +72,11 @@ private:
                     break;
                 case 'i':
                     input_string = optarg;
+                    break;
+                case 0:
+                    if (std::string(long_options[option_index].name) == "pandp") {
+                        use_pandp = true;
+                    }
                     break;
                 default:
                     return false;
@@ -117,7 +125,12 @@ private:
         // Step 1: Receive garbled circuit
         std::cout << "\n[STEP 1] Receiving garbled circuit from garbler..." << std::endl;
         
-        auto garbled_circuit = protocol.receive_circuit();
+    auto rc0 = std::chrono::high_resolution_clock::now();
+    auto garbled_circuit = protocol.receive_circuit();
+    auto rc1 = std::chrono::high_resolution_clock::now();
+    std::cout << "           Received circuit in "
+          << std::chrono::duration_cast<std::chrono::milliseconds>(rc1 - rc0).count()
+          << " ms" << std::endl;
         
         // Step 2: Receive garbler's input labels
         std::vector<WireLabel> all_input_labels;
@@ -134,16 +147,27 @@ private:
         // Step 3: Perform OT to get evaluator's input labels
         if (!evaluator_inputs.empty()) {
             std::cout << "[STEP 3] Performing OT to obtain evaluator's input labels..." << std::endl;
+            auto ot0 = std::chrono::high_resolution_clock::now();
             auto evaluator_labels = perform_ot_for_inputs(protocol, evaluator_inputs);
+            auto ot1 = std::chrono::high_resolution_clock::now();
+            std::cout << "           OT completed in "
+                      << std::chrono::duration_cast<std::chrono::milliseconds>(ot1 - ot0).count()
+                      << " ms" << std::endl;
             all_input_labels.insert(all_input_labels.end(), evaluator_labels.begin(), evaluator_labels.end());
             std::cout << "           Obtained " << evaluator_labels.size() << " wire labels via OT" << std::endl;
         }
         
-        // Step 4: Evaluate the garbled circuit
-        std::cout << "[STEP 4] Evaluating garbled circuit..." << std::endl;
+    // Step 4: Evaluate the garbled circuit
+    std::cout << "[STEP 4] Evaluating garbled circuit..." << std::endl;
+    if (use_pandp) std::cout << "           Point-and-Permute: ENABLED" << std::endl;
         
-        Evaluator evaluator;
-        auto output_labels = evaluator.evaluate_circuit(garbled_circuit, all_input_labels);
+    Evaluator evaluator(use_pandp);
+    auto ev0 = std::chrono::high_resolution_clock::now();
+    auto output_labels = evaluator.evaluate_circuit(garbled_circuit, all_input_labels);
+    auto ev1 = std::chrono::high_resolution_clock::now();
+    std::cout << "           Evaluation completed in "
+          << std::chrono::duration_cast<std::chrono::milliseconds>(ev1 - ev0).count()
+          << " ms" << std::endl;
         
         auto stats = evaluator.get_evaluation_stats();
         std::cout << "           Successfully evaluated " << stats.gates_evaluated << " gates" << std::endl;
@@ -157,7 +181,12 @@ private:
             result_data.insert(result_data.end(), label.begin(), label.end());
         }
         
-        protocol.send_result(result_data);
+    auto sr0 = std::chrono::high_resolution_clock::now();
+    protocol.send_result(result_data);
+    auto sr1 = std::chrono::high_resolution_clock::now();
+    std::cout << "           Sent result in "
+          << std::chrono::duration_cast<std::chrono::milliseconds>(sr1 - sr0).count()
+          << " ms" << std::endl;
         std::cout << "           Result transmission completed" << std::endl;
         
         std::cout << "\n=== PROTOCOL COMPLETED ===" << std::endl;

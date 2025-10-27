@@ -105,7 +105,7 @@ private:
  */
 class Garbler {
 public:
-    Garbler();
+    explicit Garbler(bool use_pandp = false);
     ~Garbler() = default;
     
     /**
@@ -147,6 +147,7 @@ public:
 
 private:
     std::map<int, std::pair<WireLabel, WireLabel>> wire_labels; // wire_id -> (label0, label1)
+    bool use_pandp_ = false;
     
     // Core garbling functions
     GarbledGate garble_gate(const Gate& gate, int gate_id);
@@ -171,6 +172,7 @@ private:
                               const WireLabel& in2_label1 = {});
     
     void permute_garbled_table(GarbledGate& garbled_gate);
+    static inline uint8_t perm_bit(const WireLabel& lbl) { return lbl[WIRE_LABEL_SIZE - 1] & 0x01; }
 };
 
 /**
@@ -178,7 +180,7 @@ private:
  */
 class Evaluator {
 public:
-    Evaluator();
+    explicit Evaluator(bool use_pandp = false);
     ~Evaluator() = default;
     
     /**
@@ -231,6 +233,7 @@ public:
 private:
     EvaluationStats eval_stats;
     std::map<int, WireLabel> wire_values; // wire_id -> current label
+    bool use_pandp_ = false;
     
     // Core evaluation functions
     WireLabel try_decrypt_gate(const GarbledGate& garbled_gate,
@@ -245,6 +248,7 @@ private:
     // Helper functions
     bool is_valid_gate_output(const std::vector<uint8_t>& decrypted_data);
     void update_evaluation_stats(bool success);
+    static inline uint8_t perm_bit(const WireLabel& lbl) { return lbl[WIRE_LABEL_SIZE - 1] & 0x01; }
 };
 
 /**

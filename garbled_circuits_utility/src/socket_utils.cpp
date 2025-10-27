@@ -592,7 +592,6 @@ GarbledCircuit ProtocolManager::deserialize_garbled_circuit(const std::vector<ui
     }
     
     // Deserialize garbled gates (ciphertexts)
-    std::cout << "[DEBUG] Deserializing " << num_gates << " garbled gates, offset=" << offset << ", total size=" << data.size() << std::endl;
     gc.garbled_gates.resize(num_gates);
     for (uint32_t i = 0; i < num_gates; ++i) {
         for (int j = 0; j < 4; ++j) { // 4 ciphertexts per truth table
