@@ -863,14 +863,14 @@ std::vector<WireLabel> Evaluator::evaluate_circuit(const GarbledCircuit& gc,
         output_labels.push_back(it->second);
     }
     
-    std::cout << "[EVAL DEBUG] Final output labels (to be sent to garbler):" << std::endl;
-    for (size_t i = 0; i < output_labels.size(); ++i) {
-        std::cout << "             Wire " << gc.circuit.output_wires[i] << " label: ";
-        for (int j = 0; j < 8; ++j) {
-            std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)output_labels[i][j];
-        }
-        std::cout << std::dec << std::endl;
-    }
+    // std::cout << "[EVAL DEBUG] Final output labels (to be sent to garbler):" << std::endl;
+    // for (size_t i = 0; i < output_labels.size(); ++i) {
+    //     std::cout << "             Wire " << gc.circuit.output_wires[i] << " label: ";
+    //     for (int j = 0; j < 8; ++j) {
+    //         std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)output_labels[i][j];
+    //     }
+    //     std::cout << std::dec << std::endl;
+    // }
     
     
     eval_stats.total_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
@@ -887,18 +887,18 @@ WireLabel Evaluator::evaluate_gate(const GarbledGate& garbled_gate,
     eval_stats.decryption_attempts++;
 
     // Print the input labels being used
-    std::cout << "[EVAL DEBUG] Gate " << gate_id << " - Input labels received:" << std::endl;
-    std::cout << "             Input1 label: ";
-    for (int j = 0; j < 8; ++j) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)input1_label[j];
-    }
-    std::cout << std::dec << std::endl;
+    // std::cout << "[EVAL DEBUG] Gate " << gate_id << " - Input labels received:" << std::endl;
+    // std::cout << "             Input1 label: ";
+    // for (int j = 0; j < 8; ++j) {
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)input1_label[j];
+    // }
+    // std::cout << std::dec << std::endl;
     
-    std::cout << "             Input2 label: ";
-    for (int j = 0; j < 8; ++j) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)input2_label[j];
-    }
-    std::cout << std::dec << std::endl;
+    // std::cout << "             Input2 label: ";
+    // for (int j = 0; j < 8; ++j) {
+    //     std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)input2_label[j];
+    // }
+    // std::cout << std::dec << std::endl;
 
     if (use_pandp_) {
         // Directly select row using permutation bits
@@ -924,7 +924,7 @@ WireLabel Evaluator::evaluate_gate(const GarbledGate& garbled_gate,
                     garbled_gate.ciphertexts[i], input1_label, input2_label, gate_id);
                 eval_stats.cipher_decryptions++;
                 eval_stats.successful_decryptions++;
-                std::cout<<"             "<<++count<<" ciphers are decrypted"<<std::endl;
+                // std::cout<<"             "<<++count<<" ciphers are decrypted"<<std::endl;
                 return result;
             } catch (const CryptoException&) {
                 eval_stats.cipher_decryptions++;

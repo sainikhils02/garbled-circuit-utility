@@ -15,7 +15,8 @@ constexpr size_t WIRE_LABEL_SIZE = SECURITY_PARAM / 8; // 16 bytes
 
 // Network constants
 constexpr int DEFAULT_PORT = 8080;
-constexpr int MAX_MESSAGE_SIZE = 65536;
+// Upper bound for serialized protocol payloads (supports multi-megabyte circuits)
+constexpr int MAX_MESSAGE_SIZE = 32 * 1024 * 1024; // 32 MiB
 constexpr int SOCKET_TIMEOUT = 30; // seconds
 
 // Gate types
